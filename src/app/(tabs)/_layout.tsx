@@ -16,10 +16,11 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: theme.background },
       }}
     >
+      {/* Titles and header actions are declared by each screen so the screen owns
+          its own state (e.g. the list/grid toggle). */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Countdowns',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="timer-outline" size={size} color={color} />
           ),

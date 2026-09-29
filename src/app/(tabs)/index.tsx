@@ -1,16 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCountdowns } from '../../features/countdowns/useCountdowns';
 import { useNow } from '../../features/countdowns/useNow';
 import { CountdownCard } from '../../features/countdowns/CountdownCard';
-import { ViewToggle } from '../../features/countdowns/ViewToggle';
 import { EmptyState } from '../../ui/EmptyState';
 import { getViewMode, setViewMode, type ViewMode } from '../../data/settings';
-import { radius, spacing, typography } from '../../ui/tokens';
+import { radius, spacing } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
 import { calculateCountdown } from '../../domain/countdown';
 import { resolveOccurrence } from '../../domain/recurrence';
@@ -18,7 +16,6 @@ import type { Countdown } from '../../domain/types';
 
 export default function CountdownsScreen() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { countdowns, loading, reload } = useCountdowns();
   const now = useNow();
@@ -49,30 +46,49 @@ export default function CountdownsScreen() {
     });
   }, [countdowns, now]);
 
+  // Actions live in the native header rather than a custom header row: the native
+  // header already handles the status-bar inset, so a hand-rolled header had to add
+  // `insets.top` itself, which double-offset the title and pushed the buttons toward
+  // the right edge where they clipped on narrow screens.
+  const headerActions = () => (
+    <View style={styles.headerActions}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={viewMode === 'grid' ? 'Show as list' : 'Show as grid'}
+        hitSlop={8}
+        onPress={() => void changeView(viewMode === 'grid' ? 'list' : 'grid')}
+        style={styles.headerButton}
+      >
+        <Ionicons
+          name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'}
+          size={22}
+          color={theme.text}
+        />
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Import from calendar"
+        hitSlop={8}
+        onPress={() => router.push('/import')}
+        style={styles.headerButton}
+      >
+        <Ionicons name="download-outline" size={22} color={theme.text} />
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Add countdown"
+        hitSlop={8}
+        onPress={() => router.push('/countdown/new')}
+        style={[styles.headerButton, styles.addButton, { backgroundColor: theme.accent }]}
+      >
+        <Ionicons name="add" size={24} color={theme.accentText} />
+      </Pressable>
+    </View>
+  );
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={[typography.title, { color: theme.text }]}>Countdowns</Text>
-        <View style={styles.headerActions}>
-          <ViewToggle theme={theme} value={viewMode} onChange={changeView} />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Import from calendar"
-            onPress={() => router.push('/import')}
-            style={[styles.icon, { backgroundColor: theme.surfaceAlt }]}
-          >
-            <Ionicons name="download-outline" size={20} color={theme.text} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Add countdown"
-            onPress={() => router.push('/countdown/new')}
-            style={[styles.icon, { backgroundColor: theme.accent }]}
-          >
-            <Ionicons name="add" size={26} color={theme.accentText} />
-          </Pressable>
-        </View>
-      </View>
+    <View style={styles.container}>
+      <Tabs.Screen name="index" options={{ title: 'Countdowns', headerRight: headerActions }} />
 
       <FlatList
         data={sorted}
@@ -109,21 +125,20 @@ export default function CountdownsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm, gap: spacing.sm },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButton: { marginLeft: spacing.xs },
   column: { gap: spacing.md },
-  // flexGrow lets the empty state centre vertically instead of hugging the top.
   list: {
     flexGrow: 1,
     padding: spacing.md,
     gap: spacing.md,
     paddingBottom: spacing.xl * 2,
-  },
-  icon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Crypto from 'expo-crypto';
 import { createCountdown } from '../../data/countdownRepo';
 import { scheduleForCountdown } from '../notifications/notificationService';
@@ -138,7 +139,7 @@ export function ImportScreen() {
                   {item.allDay ? ' · all day' : ''}
                 </Text>
               </View>
-              <Text style={[typography.title, { color: theme.accent }]}>+</Text>
+              <Ionicons name="add-circle" size={24} color={theme.accent} />
             </Pressable>
           )}
         />

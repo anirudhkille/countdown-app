@@ -1,6 +1,5 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemeGalleryScreen } from '../../features/themes/ThemeGalleryScreen';
 import { Card } from '../../ui/Card';
 import { spacing, typography } from '../../ui/tokens';
@@ -8,12 +7,11 @@ import { useTheme } from '../../ui/ThemeProvider';
 
 export default function SettingsScreen() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
 
   return (
     <ScrollView
       style={{ backgroundColor: theme.background }}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.md }]}
+      contentContainerStyle={styles.content}
     >
       <Text style={[typography.title, { color: theme.text }]}>Themes</Text>
       <ThemeGalleryScreen />
