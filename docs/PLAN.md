@@ -6,7 +6,7 @@
 
 **Architecture:** Four-layer separation. `src/domain/` is pure TypeScript with zero React and zero database imports (date math, recurrence, unit calculation). `src/data/` owns SQLite and is the only layer that speaks SQL. `src/features/` contains screens and feature components. `src/ui/` holds theme tokens and shared primitives. The domain layer is deliberately isolated so it is unit-testable without a device and reusable later by a native Android widget.
 
-**Tech Stack:** Expo SDK 57 · React Native 0.86 · React 19.2 · TypeScript (strict) · Expo Router · expo-sqlite · expo-notifications · expo-calendar · expo-sharing / expo-view-shot / expo-media-library · expo-font · @react-native-community/datetimepicker · bun
+**Tech Stack:** Expo SDK 57 · React Native 0.86 · React 19.2 · TypeScript (strict) · Expo Router · expo-sqlite · expo-notifications · expo-calendar · expo-sharing / react-native-view-shot · expo-font · @react-native-community/datetimepicker · bun
 
 ---
 
@@ -99,7 +99,7 @@ src/
       ImportScreen.tsx            Picker UI for choosing events
     share/
       shareText.ts                Build the plain-text share payload
-      ShareCard.tsx               Off-screen view captured by expo-view-shot
+      ShareCard.tsx               Off-screen view captured by react-native-view-shot
       ShareScreen.tsx             Capture + share flow
     themes/
       ThemeGalleryScreen.tsx      Theme chooser
@@ -175,7 +175,7 @@ Expected: SDK **57.x**. If it is 56 or lower, stop and correct the version — t
 - [ ] **Step 4: Install the runtime dependencies**
 
 ```powershell
-bun expo install expo-router expo-sqlite expo-notifications expo-calendar expo-sharing expo-view-shot expo-font expo-haptics expo-system-ui expo-crypto expo-status-bar expo-splash-screen react-native-safe-area-context @react-native-community/datetimepicker
+bun expo install expo-router expo-sqlite expo-notifications expo-calendar expo-sharing react-native-view-shot expo-font expo-haptics expo-system-ui expo-crypto expo-status-bar expo-splash-screen react-native-safe-area-context @react-native-community/datetimepicker
 bun add -d jest-expo jest @types/jest eslint eslint-config-expo
 bun add @expo-google-fonts/inter @expo-google-fonts/space-grotesk @expo-google-fonts/playfair-display @expo-google-fonts/dm-serif-display
 ```
@@ -3300,7 +3300,7 @@ git commit -m "feat(import): add calendar event import"
 - Create: `app/share/[id].tsx`
 
 **Interfaces:**
-- Consumes: `getCountdown` (Task 7); `resolveOccurrence`, `calculateCountdown` (Tasks 4, 5); `formatCountdownValue`, `formatUnitLabel` (Task 5); `expo-view-shot`, `expo-sharing`, `expo-file-system`
+- Consumes: `getCountdown` (Task 7); `resolveOccurrence`, `calculateCountdown` (Tasks 4, 5); `formatCountdownValue`, `formatUnitLabel` (Task 5); `react-native-view-shot`, `expo-sharing`
 - Produces: `buildShareText(countdown, value): string` and the `/share/:id` modal route
 
 - [ ] **Step 1: Implement `shareText.ts`**
@@ -3334,7 +3334,7 @@ import { radius, spacing, typography } from '../../ui/tokens';
 import { formatCountdownValue, formatUnitLabel } from '../../domain/format';
 import type { Countdown, CountdownValue } from '../../domain/types';
 
-/** Rendered off-screen and captured with expo-view-shot. */
+/** Rendered off-screen and captured with react-native-view-shot. */
 export function ShareCard({
   countdown,
   value,
@@ -3389,7 +3389,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { captureRef } from 'expo-view-shot';
+import { captureRef } from 'react-native-view-shot';
 import { getCountdown } from '../../data/countdownRepo';
 import { resolveOccurrence } from '../../domain/recurrence';
 import { calculateCountdown } from '../../domain/countdown';

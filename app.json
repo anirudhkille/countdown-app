@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Countdown",
+    "slug": "countdown",
+    "scheme": "countdown",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.anirudhkille.countdown",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B0B0F"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.anirudhkille.countdown",
+      "supportsTablet": true
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "color": "#0B0B0F"
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Countdown needs calendar access so you can import events into your countdowns."
+        }
+      ],
+      "expo-font",
+      "expo-sqlite",
+      "expo-sharing",
+      "expo-splash-screen",
+      "@react-native-community/datetimepicker"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
