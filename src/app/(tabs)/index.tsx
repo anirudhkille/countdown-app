@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCountdowns } from '../../features/countdowns/useCountdowns';
@@ -48,18 +49,6 @@ export default function CountdownsScreen() {
     });
   }, [countdowns, now]);
 
-  if (!loading && sorted.length === 0) {
-    return (
-      <View style={[styles.empty, { paddingTop: insets.top }]}>
-        <EmptyState
-          theme={theme}
-          title="No countdowns yet"
-          message="Tap + to add a birthday, a holiday, or anything you're looking forward to."
-        />
-      </View>
-    );
-  }
-
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
@@ -72,7 +61,7 @@ export default function CountdownsScreen() {
             onPress={() => router.push('/import')}
             style={[styles.icon, { backgroundColor: theme.surfaceAlt }]}
           >
-            <Text style={{ color: theme.text, fontSize: 16 }}>⇩</Text>
+            <Ionicons name="download-outline" size={20} color={theme.text} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -80,7 +69,7 @@ export default function CountdownsScreen() {
             onPress={() => router.push('/countdown/new')}
             style={[styles.icon, { backgroundColor: theme.accent }]}
           >
-            <Text style={{ color: theme.accentText, fontSize: 24, lineHeight: 28 }}>+</Text>
+            <Ionicons name="add" size={26} color={theme.accentText} />
           </Pressable>
         </View>
       </View>
@@ -94,6 +83,15 @@ export default function CountdownsScreen() {
         contentContainerStyle={styles.list}
         onRefresh={() => void reload()}
         refreshing={loading}
+        ListEmptyComponent={
+          loading ? null : (
+            <EmptyState
+              theme={theme}
+              title="No countdowns yet"
+              message="Tap + to add a birthday, a holiday, or anything you're looking forward to."
+            />
+          )
+        }
         renderItem={({ item }) => (
           <CountdownCard
             countdown={item}
@@ -111,11 +109,16 @@ export default function CountdownsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  empty: { flex: 1, justifyContent: 'center' },
   header: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm, gap: spacing.sm },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   column: { gap: spacing.md },
-  list: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xl * 2 },
+  // flexGrow lets the empty state centre vertically instead of hugging the top.
+  list: {
+    flexGrow: 1,
+    padding: spacing.md,
+    gap: spacing.md,
+    paddingBottom: spacing.xl * 2,
+  },
   icon: {
     width: 44,
     height: 44,
