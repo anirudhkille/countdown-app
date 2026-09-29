@@ -1,4 +1,3 @@
-/* eslint-disable import/first -- jest.mock must be called before the module under test is imported. */
 const mockExpoGo = { value: true };
 
 jest.mock('expo', () => ({

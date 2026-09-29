@@ -19,7 +19,10 @@ module.exports = [
     },
   },
   {
-    files: ['src/features/notifications/notificationService.ts'],
+    files: [
+      'src/features/notifications/notificationService.ts',
+      'src/features/calendarImport/importEvents.ts',
+    ],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
     },

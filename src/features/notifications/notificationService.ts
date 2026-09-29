@@ -9,16 +9,6 @@ const CHANNEL_ID = 'countdown-reminders';
 
 const idFor = (countdownId: string) => `countdown:${countdownId}`;
 
-/**
- * True when reminders cannot possibly work: Expo Go on Android dropped
- * `expo-notifications` push support in SDK 53, and the module THROWS AT IMPORT TIME
- * there. A top-level `import * as Notifications` would take down every route, so the
- * module is only ever touched through `getNotifications()`.
- *
- * Checked as a fast path so Expo Go does not spam the console with the throw on
- * every launch; the `try/catch` inside `getNotifications()` is the real safety net
- * for any other case where the native module is missing.
- */
 export function notificationsBlocked(): boolean {
   return isRunningInExpoGo() && Platform.OS === 'android';
 }
@@ -33,7 +23,6 @@ function getNotifications(): typeof ExpoNotifications | null {
     return cached;
   }
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     cached = require('expo-notifications') as typeof ExpoNotifications;
     if (!handlerInstalled) {
       handlerInstalled = true;

@@ -8,18 +8,13 @@ export interface ImportableEvent {
   notes: string | null;
 }
 
-/**
- * `expo-calendar` is unsupported in Expo Go (device only), so the module is loaded
- * lazily behind a try/catch for the same reason as `expo-notifications`: a top-level
- * import would make this route unopenable rather than simply unavailable.
- */
 let cached: typeof Calendar | null | undefined;
 
 function getCalendar(): typeof Calendar | null {
   if (cached !== undefined) return cached;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    cached = require('expo-calendar') as typeof Calendar;  } catch {
+    cached = require('expo-calendar') as typeof Calendar;
+  } catch {
     cached = null;
   }
   return cached;
