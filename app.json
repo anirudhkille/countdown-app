@@ -7,10 +7,11 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
     "android": {
       "package": "com.anirudhkille.countdown",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#0B0B0F"
       }
     },
@@ -33,10 +34,14 @@
         }
       ],
       "expo-font",
-      "expo-sqlite",
-      "expo-sharing",
-      "expo-splash-screen",
-      "@react-native-community/datetimepicker"
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0B0B0F"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
