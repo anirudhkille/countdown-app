@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { getTheme } from '../../ui/themes';
-import { fontFamilyFor } from '../../ui/fonts';
+import { useFontFamily, useTheme } from '../../ui/ThemeProvider';
 import { radius, spacing, typography } from '../../ui/tokens';
 import { formatCountdownValue, formatUnitLabel } from '../../domain/format';
 import type { Countdown, CountdownValue } from '../../domain/types';
@@ -13,8 +12,8 @@ export function ShareCard({
   countdown: Countdown;
   value: CountdownValue;
 }) {
-  const theme = getTheme(countdown.themeId);
-  const font = fontFamilyFor(countdown.fontFamily);
+  const theme = useTheme();
+  const font = useFontFamily();
   return (
     <View style={[styles.card, { backgroundColor: theme.background }]}>
       <Text style={[typography.label, { color: theme.textMuted }]}>

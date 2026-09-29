@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
 import { radius, spacing, typography } from '../../ui/tokens';
 import type { Theme } from '../../ui/themes';
+
+type PickerMode = 'date' | 'time';
 
 export function DateTimeField({
   theme,
@@ -17,23 +19,43 @@ export function DateTimeField({
   showTime: boolean;
   onChange: (next: Date) => void;
 }) {
-  const [mode, setMode] = React.useState<'date' | 'time'>('date');
+  // The picker must only be mounted while the user is actively choosing. Rendering it
+  // unconditionally mounts the native Android dialog permanently, where it captures
+  // every touch in the screen, and on iOS the inline calendar expands into the layout.
+  const [open, setOpen] = useState<PickerMode | null>(null);
 
   const handle = (event: DateTimePickerEvent, selected?: Date) => {
-    if (Platform.OS === 'android') setMode('date');
-    if (event.type === 'dismissed' || !selected) return;
+    if (event.type === 'dismissed' || !selected) {
+      setOpen(null);
+      return;
+    }
     onChange(selected);
+    setOpen(null);
   };
+
+  const toggle = (mode: PickerMode) => setOpen((current) => (current === mode ? null : mode));
 
   return (
     <View style={styles.wrap}>
       <View style={styles.row}>
         <Pressable
           accessibilityRole="button"
-          onPress={() => setMode('date')}
-          style={[styles.chip, { backgroundColor: theme.surfaceAlt }]}
+          accessibilityLabel="Choose date"
+          accessibilityState={{ expanded: open === 'date' }}
+          onPress={() => toggle('date')}
+          style={[
+            styles.chip,
+            {
+              backgroundColor: open === 'date' ? theme.accent : theme.surfaceAlt,
+            },
+          ]}
         >
-          <Text style={[typography.body, { color: theme.text }]}>
+          <Text
+            style={[
+              typography.body,
+              { color: open === 'date' ? theme.accentText : theme.text },
+            ]}
+          >
             {value.toLocaleDateString(undefined, {
               day: 'numeric',
               month: 'short',
@@ -44,10 +66,22 @@ export function DateTimeField({
         {showTime ? (
           <Pressable
             accessibilityRole="button"
-            onPress={() => setMode('time')}
-            style={[styles.chip, { backgroundColor: theme.surfaceAlt }]}
+            accessibilityLabel="Choose time"
+            accessibilityState={{ expanded: open === 'time' }}
+            onPress={() => toggle('time')}
+            style={[
+              styles.chip,
+              {
+                backgroundColor: open === 'time' ? theme.accent : theme.surfaceAlt,
+              },
+            ]}
           >
-            <Text style={[typography.body, { color: theme.text }]}>
+            <Text
+              style={[
+                typography.body,
+                { color: open === 'time' ? theme.accentText : theme.text },
+              ]}
+            >
               {value.toLocaleTimeString(undefined, {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -56,21 +90,24 @@ export function DateTimeField({
           </Pressable>
         ) : null}
       </View>
-      {mode === 'date' ? (
+
+      {open === 'date' ? (
         <DateTimePicker
           value={value}
           mode="date"
           display={Platform.OS === 'ios' ? 'inline' : 'default'}
           onChange={handle}
         />
-      ) : (
+      ) : null}
+
+      {open === 'time' ? (
         <DateTimePicker
           value={value}
           mode="time"
           display={Platform.OS === 'ios' ? 'inline' : 'default'}
           onChange={handle}
         />
-      )}
+      ) : null}
     </View>
   );
 }

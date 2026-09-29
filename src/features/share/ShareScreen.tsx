@@ -9,7 +9,7 @@ import { calculateCountdown } from '../../domain/countdown';
 import { useNow } from '../countdowns/useNow';
 import type { Countdown } from '../../domain/types';
 import { radius, spacing, typography } from '../../ui/tokens';
-import { getTheme } from '../../ui/themes';
+import { useTheme } from '../../ui/ThemeProvider';
 import { buildShareText } from './shareText';
 import { ShareCard } from './ShareCard';
 
@@ -20,6 +20,7 @@ export function ShareScreen() {
   const now = useNow();
   const [countdown, setCountdown] = useState<Countdown | null>(null);
   const [busy, setBusy] = useState(false);
+  const theme = useTheme();
 
   useEffect(() => {
     let cancelled = false;
@@ -85,8 +86,6 @@ export function ShareScreen() {
       </View>
     );
   }
-
-  const theme = getTheme(countdown.themeId);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>

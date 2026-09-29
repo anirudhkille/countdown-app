@@ -3,9 +3,8 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Card } from '../../ui/Card';
 import { CountdownText } from '../../ui/CountdownText';
-import { getTheme } from '../../ui/themes';
 import { spacing, typography } from '../../ui/tokens';
-import { fontFamilyFor } from '../../ui/fonts';
+import { useTheme } from '../../ui/ThemeProvider';
 import { calculateCountdown } from '../../domain/countdown';
 import { resolveOccurrence } from '../../domain/recurrence';
 import type { Countdown } from '../../domain/types';
@@ -20,7 +19,7 @@ export function CountdownCard({
   onPress: () => void;
 }) {
   const router = useRouter();
-  const theme = getTheme(countdown.themeId);
+  const theme = useTheme();
 
   const value = useMemo(() => {
     const occurrence = resolveOccurrence(
@@ -57,7 +56,6 @@ export function CountdownCard({
           theme={theme}
           value={value}
           direction={countdown.direction}
-          fontFamily={fontFamilyFor(countdown.fontFamily)}
           color={countdown.color}
         />
         <Text style={[typography.caption, styles.target, { color: theme.textMuted }]}>

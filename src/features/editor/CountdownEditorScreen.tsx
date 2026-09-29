@@ -24,10 +24,8 @@ import {
 import type { CountdownDraft, Direction, Recurrence, Unit } from '../../domain/types';
 import { Card } from '../../ui/Card';
 import { Segmented } from '../../ui/Segmented';
-import { getTheme, THEMES } from '../../ui/themes';
 import { radius, spacing, typography } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
-import { FONT_OPTIONS } from '../../ui/fonts';
 import { DateTimeField } from './DateTimeField';
 import { OptionRow } from './OptionRow';
 
@@ -50,7 +48,7 @@ const SWATCHES: (string | null)[] = [
 export function CountdownEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const activeTheme = useTheme();
+  const theme = useTheme();
   const isNew = id === 'new';
 
   const [title, setTitle] = useState('');
@@ -60,11 +58,13 @@ export function CountdownEditorScreen() {
   const [direction, setDirection] = useState<Direction>('down');
   const [unit, setUnit] = useState<Unit>('auto');
   const [reminder, setReminder] = useState<string>('none');
-  const [themeId, setThemeId] = useState(activeTheme.id);
   const [color, setColor] = useState<string | null>(null);
-  const [fontFamily, setFontFamily] = useState<string | null>(null);
   const [emoji, setEmoji] = useState('');
   const [saving, setSaving] = useState(false);
+  // Theme and font are now app-wide settings, so the editor has no controls for them.
+  // These two still round-trip the stored values so an edit does not discard them.
+  const [storedThemeId, setStoredThemeId] = useState<string>('system');
+  const [storedFontFamily, setStoredFontFamily] = useState<string | null>(null);
 
   useEffect(() => {
     if (isNew) return;
@@ -76,9 +76,9 @@ export function CountdownEditorScreen() {
       setRecurrence(c.recurrence);
       setDirection(c.direction);
       setUnit(c.unit);
-      setThemeId(c.themeId);
       setColor(c.color);
-      setFontFamily(c.fontFamily);
+      setStoredThemeId(c.themeId);
+      setStoredFontFamily(c.fontFamily);
       setEmoji(c.emoji ?? '');
       if (c.remindAt === null) return;
       const hours = Math.round((c.remindAt - c.targetDate) / 3_600_000);
@@ -87,7 +87,6 @@ export function CountdownEditorScreen() {
     });
   }, [id, isNew]);
 
-  const theme = getTheme(themeId);
   const reminderHours = useMemo(
     () => REMINDER_OPTIONS.find((o) => o.value === reminder)?.hours ?? null,
     [reminder]
@@ -111,9 +110,9 @@ export function CountdownEditorScreen() {
       direction,
       unit,
       showTime,
-      themeId,
+      themeId: storedThemeId,
       color,
-      fontFamily,
+      fontFamily: storedFontFamily,
       emoji: emoji.trim() || null,
       remindAt: reminderHours === null ? null : targetDate - reminderHours * 3_600_000,
     };
@@ -249,25 +248,11 @@ export function CountdownEditorScreen() {
       </Card>
 
       <Card theme={theme}>
-        <OptionRow theme={theme} label="Theme">
-          <Segmented
-            theme={theme}
-            value={themeId}
-            onChange={setThemeId}
-            options={THEMES.map((t) => ({ value: t.id, label: t.label }))}
-          />
-        </OptionRow>
-
-        <OptionRow theme={theme} label="Font">
-          <Segmented
-            theme={theme}
-            value={fontFamily ?? 'System'}
-            onChange={(v) => setFontFamily(v === 'System' ? null : v)}
-            options={FONT_OPTIONS.map((f) => ({ value: f.key, label: f.label }))}
-          />
-        </OptionRow>
-
-        <OptionRow theme={theme} label="Accent colour" hint="Overrides the theme accent.">
+        <OptionRow
+          theme={theme}
+          label="Accent colour"
+          hint="Overrides the theme accent for this countdown."
+        >
           <View style={styles.swatches}>
             {SWATCHES.map((swatch) => (
               <Pressable

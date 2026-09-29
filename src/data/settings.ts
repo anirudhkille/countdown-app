@@ -20,5 +20,8 @@ export type ViewMode = 'grid' | 'list';
 export const getViewMode = () => getSetting<ViewMode>('viewMode', 'grid');
 export const setViewMode = (mode: ViewMode) => setSetting('viewMode', mode);
 
-export const getActiveThemeId = () => getSetting<ThemeId>('activeThemeId', 'default');
+export const getActiveThemeId = () => getSetting<ThemeId>('activeThemeId', 'system');
 export const setActiveThemeId = (id: ThemeId) => setSetting('activeThemeId', id);
+
+export const getFontKey = () => getSetting<string>('fontKey', 'System');
+export const setFontKey = (key: string) => setSetting('fontKey', key);

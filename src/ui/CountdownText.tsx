@@ -3,21 +3,21 @@ import { StyleSheet, Text, View } from 'react-native';
 import { formatCountdownValue, formatUnitLabel } from '../domain/format';
 import type { CountdownValue, Direction } from '../domain/types';
 import { typography } from './tokens';
+import { useFontFamily } from './ThemeProvider';
 import type { Theme } from './themes';
 
 export function CountdownText({
   theme,
   value,
   direction,
-  fontFamily,
   color,
 }: {
   theme: Theme;
   value: CountdownValue;
   direction: Direction;
-  fontFamily?: string;
   color?: string | null;
 }) {
+  const fontFamily = useFontFamily();
   const tint = color ?? theme.accent;
   return (
     <View style={styles.wrap}>

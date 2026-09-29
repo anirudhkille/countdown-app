@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ThemeGalleryScreen } from '../../features/themes/ThemeGalleryScreen';
+import { ThemeSelect } from '../../features/settings/ThemeSelect';
+import { FontSelect } from '../../features/settings/FontSelect';
 import { Card } from '../../ui/Card';
 import { spacing, typography } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
@@ -13,8 +14,9 @@ export default function SettingsScreen() {
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={styles.content}
     >
-      <Text style={[typography.title, { color: theme.text }]}>Themes</Text>
-      <ThemeGalleryScreen />
+      <Text style={[typography.label, { color: theme.textMuted }]}>Appearance</Text>
+      <ThemeSelect />
+      <FontSelect />
 
       <Card theme={theme}>
         <View style={styles.gap}>
