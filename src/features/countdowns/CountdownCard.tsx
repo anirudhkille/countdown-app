@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Card } from '../../ui/Card';
 import { CountdownText } from '../../ui/CountdownText';
@@ -13,10 +13,12 @@ export function CountdownCard({
   countdown,
   now,
   onPress,
+  style,
 }: {
   countdown: Countdown;
   now: number;
   onPress: () => void;
+  style?: StyleProp<ViewStyle>;
 }) {
   const router = useRouter();
   const theme = useTheme();
@@ -46,6 +48,7 @@ export function CountdownCard({
       accessibilityRole="button"
       onPress={onPress}
       onLongPress={() => router.push(`/share/${countdown.id}`)}
+      style={style}
     >
       <Card theme={theme}>
         <Text style={[typography.label, { color: theme.textMuted }]}>

@@ -38,10 +38,16 @@ export function ImportScreen() {
       const granted = await hasCalendarPermission();
       if (cancelled) return;
       if (!granted) {
-        Alert.alert(
-          'Calendar access needed',
-          'Grant calendar access to pick events from your device.'
-        );
+        // The module resolved but the native call failed, so this is a missing native
+        // module rather than a permission the user declined.
+        if (!isCalendarAvailable()) {
+          setUnavailable(true);
+        } else {
+          Alert.alert(
+            'Calendar access needed',
+            'Grant calendar access to pick events from your device.'
+          );
+        }
         setLoading(false);
         return;
       }

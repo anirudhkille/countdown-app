@@ -95,7 +95,7 @@ export default function CountdownsScreen() {
         key={viewMode}
         keyExtractor={(item) => item.id}
         numColumns={viewMode === 'grid' ? 2 : 1}
-        columnWrapperStyle={viewMode === 'grid' ? styles.column : undefined}
+        columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
         contentContainerStyle={styles.list}
         onRefresh={() => void reload()}
         refreshing={loading}
@@ -112,6 +112,7 @@ export default function CountdownsScreen() {
           <CountdownCard
             countdown={item}
             now={now}
+            style={viewMode === 'grid' ? styles.gridItem : undefined}
             onPress={() => {
               void Haptics.selectionAsync();
               router.push(`/countdown/${item.id}`);
@@ -134,11 +135,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addButton: { marginLeft: spacing.xs },
-  column: { gap: spacing.md },
+  // Multi-column rows only divide evenly when each child flexes; without this the
+  // cards size to their content and leave a ragged gap at the right edge.
+  gridItem: { flex: 1 },
+  // Column gap lives on the row wrapper and row gap on the content container, so the
+  // two do not stack and double the spacing between cards.
+  gridRow: { columnGap: spacing.md },
   list: {
     flexGrow: 1,
     padding: spacing.md,
-    gap: spacing.md,
+    rowGap: spacing.md,
     paddingBottom: spacing.xl * 2,
   },
 });

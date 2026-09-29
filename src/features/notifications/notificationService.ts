@@ -13,6 +13,16 @@ export function notificationsBlocked(): boolean {
   return isRunningInExpoGo() && Platform.OS === 'android';
 }
 
+/**
+ * Resolving the module is not proof it works: the JS side can load while the native
+ * side rejects, so every native call is wrapped and the first failure latches the
+ * module off. Without this a single rejected promise escapes as an unhandled
+ * rejection rather than degrading to "reminders unavailable".
+ */
+function markUnavailable(): void {
+  cached = null;
+}
+
 let cached: typeof ExpoNotifications | null | undefined;
 let handlerInstalled = false;
 
@@ -44,20 +54,29 @@ function getNotifications(): typeof ExpoNotifications | null {
 export async function ensurePermissions(): Promise<boolean> {
   const Notifications = getNotifications();
   if (!Notifications) return false;
-  const current = await Notifications.getPermissionsAsync();
-  if (current.granted) return true;
-  const requested = await Notifications.requestPermissionsAsync();
-  return requested.granted;
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    if (current.granted) return true;
+    const requested = await Notifications.requestPermissionsAsync();
+    return requested.granted;
+  } catch {
+    markUnavailable();
+    return false;
+  }
 }
 
 export async function ensureChannel(): Promise<void> {
   const Notifications = getNotifications();
   if (!Notifications) return;
   if (Platform.OS !== 'android') return;
-  await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-    name: 'Countdown reminders',
-    importance: Notifications.AndroidImportance.DEFAULT,
-  });
+  try {
+    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+      name: 'Countdown reminders',
+      importance: Notifications.AndroidImportance.DEFAULT,
+    });
+  } catch {
+    markUnavailable();
+  }
 }
 
 export async function scheduleForCountdown(countdown: Countdown): Promise<void> {
@@ -81,35 +100,48 @@ export async function scheduleForCountdown(countdown: Countdown): Promise<void> 
   const granted = await ensurePermissions();
   if (!granted) return;
 
-  await Notifications.scheduleNotificationAsync({
-    identifier: idFor(countdown.id),
-    content: {
-      title: countdown.title,
-      body:
-        countdown.recurrence === 'none'
-          ? 'Your countdown is today.'
-          : 'Your countdown is coming up.',
-      data: { countdownId: countdown.id },
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DATE,
-      date: new Date(fireAt),
-      channelId: CHANNEL_ID,
-    },
-  });
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: idFor(countdown.id),
+      content: {
+        title: countdown.title,
+        body:
+          countdown.recurrence === 'none'
+            ? 'Your countdown is today.'
+            : 'Your countdown is coming up.',
+        data: { countdownId: countdown.id },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: new Date(fireAt),
+        channelId: CHANNEL_ID,
+      },
+    });
+  } catch {
+    markUnavailable();
+  }
 }
 
 export async function cancelForCountdown(id: string): Promise<void> {
   const Notifications = getNotifications();
   if (!Notifications) return;
-  await Notifications.cancelScheduledNotificationAsync(idFor(id));
+  try {
+    await Notifications.cancelScheduledNotificationAsync(idFor(id));
+  } catch {
+    markUnavailable();
+  }
 }
 
 export async function reconcileAll(): Promise<void> {
   const Notifications = getNotifications();
   if (!Notifications) return;
   await ensureChannel();
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch {
+    markUnavailable();
+    return;
+  }
   const countdowns = await listCountdowns();
   for (const countdown of countdowns) {
     await scheduleForCountdown(countdown);
