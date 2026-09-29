@@ -3,10 +3,10 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Inter_400Regular } from '@expo-google-fonts/inter';
-import { SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
-import { PlayfairDisplay_700Bold } from '@expo-google-fonts/playfair-display';
-import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display';
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk/700Bold';
+import { PlayfairDisplay_700Bold } from '@expo-google-fonts/playfair-display/700Bold';
+import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display/400Regular';
 import { ThemeProvider, useTheme } from '../ui/ThemeProvider';
 import { useNotificationBootstrap } from '../features/notifications/useNotificationBootstrap';
 
