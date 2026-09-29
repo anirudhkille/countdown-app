@@ -13,6 +13,18 @@ module.exports = [
     ],
   },
   {
+    files: ['tests/**/*.ts', 'tests/**/*.tsx'],
+    rules: {
+      'import/first': 'off',
+    },
+  },
+  {
+    files: ['src/features/notifications/notificationService.ts'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
     files: ['src/domain/**/*.ts', 'src/domain/**/*.tsx'],
     rules: {
       'no-restricted-imports': [

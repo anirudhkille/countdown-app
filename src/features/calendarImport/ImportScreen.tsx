@@ -9,6 +9,7 @@ import { radius, spacing, typography } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
 import {
   hasCalendarPermission,
+  isCalendarAvailable,
   listImportableEvents,
   type ImportableEvent,
 } from './importEvents';
@@ -19,11 +20,19 @@ export function ImportScreen() {
   const now = useNow();
   const [events, setEvents] = useState<ImportableEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     void (async () => {
+      if (!isCalendarAvailable()) {
+        if (!cancelled) {
+          setUnavailable(true);
+          setLoading(false);
+        }
+        return;
+      }
       const granted = await hasCalendarPermission();
       if (cancelled) return;
       if (!granted) {
@@ -47,6 +56,28 @@ export function ImportScreen() {
       cancelled = true;
     };
   }, [now]);
+
+  if (unavailable) {
+    return (
+      <View style={[styles.unavailable, { backgroundColor: theme.background }]}>
+        <Text style={[typography.title, { color: theme.text, textAlign: 'center' }]}>
+          Calendar import needs a development build
+        </Text>
+        <Text style={[typography.body, styles.unavailableBody, { color: theme.textMuted }]}>
+          Expo Go does not include calendar access. Run{'\n'}
+          <Text style={{ fontFamily: 'monospace' }}>expo run:android</Text> to install a
+          development build, then try again.
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.back()}
+          style={[styles.backButton, { borderColor: theme.border }]}
+        >
+          <Text style={[typography.body, { color: theme.text }]}>Back</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   async function importEvent(event: ImportableEvent) {
     const date = new Date(event.date);
@@ -119,6 +150,19 @@ export function ImportScreen() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   loading: { padding: spacing.lg },
+  unavailable: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  unavailableBody: { textAlign: 'center' },
+  backButton: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
   list: { padding: spacing.md, gap: spacing.sm },
   row: {
     flexDirection: 'row',

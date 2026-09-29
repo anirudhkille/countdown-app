@@ -1,4 +1,4 @@
-import * as Calendar from 'expo-calendar';
+import type * as Calendar from 'expo-calendar';
 
 export interface ImportableEvent {
   id: string;
@@ -8,7 +8,30 @@ export interface ImportableEvent {
   notes: string | null;
 }
 
+/**
+ * `expo-calendar` is unsupported in Expo Go (device only), so the module is loaded
+ * lazily behind a try/catch for the same reason as `expo-notifications`: a top-level
+ * import would make this route unopenable rather than simply unavailable.
+ */
+let cached: typeof Calendar | null | undefined;
+
+function getCalendar(): typeof Calendar | null {
+  if (cached !== undefined) return cached;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    cached = require('expo-calendar') as typeof Calendar;  } catch {
+    cached = null;
+  }
+  return cached;
+}
+
+export function isCalendarAvailable(): boolean {
+  return getCalendar() !== null;
+}
+
 export async function hasCalendarPermission(): Promise<boolean> {
+  const Calendar = getCalendar();
+  if (!Calendar) return false;
   const status = await Calendar.getCalendarPermissions();
   if (status.granted) return true;
   const requested = await Calendar.requestCalendarPermissions();
@@ -19,6 +42,8 @@ export async function listImportableEvents(
   from: Date,
   to: Date
 ): Promise<ImportableEvent[]> {
+  const Calendar = getCalendar();
+  if (!Calendar) return [];
   const calendars = await Calendar.getCalendars(Calendar.EntityTypes.EVENT);
   if (calendars.length === 0) return [];
 

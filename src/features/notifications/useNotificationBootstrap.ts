@@ -1,10 +1,17 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
-import * as Notifications from 'expo-notifications';
-import { ensureChannel, ensurePermissions, reconcileAll } from './notificationService';
+import {
+  ensureChannel,
+  ensurePermissions,
+  notificationsBlocked,
+  onNotificationResponse,
+  reconcileAll,
+} from './notificationService';
 
 export function useNotificationBootstrap(): void {
   useEffect(() => {
+    if (notificationsBlocked()) return;
+
     let cancelled = false;
 
     void (async () => {
@@ -18,7 +25,7 @@ export function useNotificationBootstrap(): void {
       if (state === 'active') void reconcileAll();
     });
 
-    const responseSub = Notifications.addNotificationResponseReceivedListener(() => {});
+    const responseSub = onNotificationResponse(() => {});
 
     return () => {
       cancelled = true;
