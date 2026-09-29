@@ -88,7 +88,7 @@ export default function CountdownsScreen() {
 
   return (
     <View style={styles.container}>
-      <Tabs.Screen name="index" options={{ title: 'Countdowns', headerRight: headerActions }} />
+      <Tabs.Screen options={{ title: 'Countdowns', headerRight: headerActions }} />
 
       <FlatList
         data={sorted}
