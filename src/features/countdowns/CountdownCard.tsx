@@ -1,13 +1,18 @@
 import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Card } from '../../ui/Card';
-import { CountdownText } from '../../ui/CountdownText';
-import { spacing, typography } from '../../ui/tokens';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { ProgressRing } from '../../ui/ProgressRing';
+import { radius, spacing, typography } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
 import { calculateCountdown } from '../../domain/countdown';
 import { resolveOccurrence } from '../../domain/recurrence';
 import type { Countdown } from '../../domain/types';
+
+function formatTargetDate(ms: number): string {
+  const d = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
 
 export function CountdownCard({
   countdown,
@@ -20,63 +25,52 @@ export function CountdownCard({
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
-  const router = useRouter();
   const theme = useTheme();
 
-  const value = useMemo(() => {
-    const occurrence = resolveOccurrence(
-      countdown.targetDate,
-      countdown.recurrence,
-      now,
-      countdown.anchorDay
-    );
-    return calculateCountdown({
-      occurrence,
-      now,
-      direction: countdown.direction,
-      unit: countdown.unit,
-      anchorDay: countdown.anchorDay,
-    });
-  }, [countdown, now]);
+  const occurrence = useMemo(
+    () => resolveOccurrence(countdown.targetDate, countdown.recurrence, now, countdown.anchorDay),
+    [countdown, now]
+  );
 
-  const target = new Date(
-    resolveOccurrence(countdown.targetDate, countdown.recurrence, now, countdown.anchorDay)
+  const value = useMemo(
+    () =>
+      calculateCountdown({
+        occurrence,
+        now,
+        direction: countdown.direction,
+        unit: countdown.unit,
+        anchorDay: countdown.anchorDay,
+      }),
+    [countdown, occurrence, now]
   );
 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={`${countdown.title}, ${value.value} ${value.unit}`}
       onPress={onPress}
-      onLongPress={() => router.push(`/share/${countdown.id}`)}
       style={style}
     >
-      <Card theme={theme}>
-        <Text style={[typography.label, { color: theme.textMuted }]}>
-          {countdown.emoji ? `${countdown.emoji} ` : ''}
-          {countdown.title}
-        </Text>
-        <CountdownText
-          theme={theme}
-          value={value}
-          direction={countdown.direction}
-          color={countdown.color}
-        />
-        <Text style={[typography.caption, styles.target, { color: theme.textMuted }]}>
-          {target.toLocaleDateString(undefined, {
-            weekday: 'short',
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          })}
-          {countdown.recurrence !== 'none'
-            ? ` · every ${countdown.recurrence.slice(0, -2)}`
-            : ''}
-        </Text>
-      </Card>
+      <View style={[styles.card, { backgroundColor: theme.surface }]}>
+        <View style={styles.topRow}>
+          <Text style={[typography.caption, styles.date, { color: theme.textMuted }]}>
+            {formatTargetDate(occurrence)}
+          </Text>
+          <Ionicons name="ellipsis-vertical" size={18} color={theme.textMuted} />
+        </View>
+        <ProgressRing value={value} direction={countdown.direction} />
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  target: { marginTop: spacing.sm },
+  card: {
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', alignSelf: 'stretch' },
+  date: { fontSize: 15 },
 });

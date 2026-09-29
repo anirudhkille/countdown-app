@@ -7,7 +7,7 @@ import { useCountdowns } from '../../features/countdowns/useCountdowns';
 import { useNow } from '../../features/countdowns/useNow';
 import { CountdownCard } from '../../features/countdowns/CountdownCard';
 import { EmptyState } from '../../ui/EmptyState';
-import { getViewMode, setViewMode, type ViewMode } from '../../data/settings';
+import { getViewMode as loadViewMode, setViewMode, type ViewMode } from '../../data/settings';
 import { radius, spacing } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
 import { calculateCountdown } from '../../domain/countdown';
@@ -22,7 +22,7 @@ export default function CountdownsScreen() {
   const [viewMode, setViewModeState] = useState<ViewMode>('grid');
 
   useEffect(() => {
-    void getViewMode().then(setViewModeState);
+    void loadViewMode().then(setViewModeState);
   }, []);
 
   const changeView = useCallback(async (next: ViewMode) => {
@@ -46,49 +46,41 @@ export default function CountdownsScreen() {
     });
   }, [countdowns, now]);
 
-  // Actions live in the native header rather than a custom header row: the native
-  // header already handles the status-bar inset, so a hand-rolled header had to add
-  // `insets.top` itself, which double-offset the title and pushed the buttons toward
-  // the right edge where they clipped on narrow screens.
   const headerActions = () => (
-    <View style={styles.headerActions}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={viewMode === 'grid' ? 'Show as list' : 'Show as grid'}
-        hitSlop={8}
-        onPress={() => void changeView(viewMode === 'grid' ? 'list' : 'grid')}
-        style={styles.headerButton}
-      >
-        <Ionicons
-          name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'}
-          size={22}
-          color={theme.text}
-        />
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Import from calendar"
-        hitSlop={8}
-        onPress={() => router.push('/import')}
-        style={styles.headerButton}
-      >
-        <Ionicons name="download-outline" size={22} color={theme.text} />
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Add countdown"
-        hitSlop={8}
-        onPress={() => router.push('/countdown/new')}
-        style={[styles.headerButton, styles.addButton, { backgroundColor: theme.accent }]}
-      >
-        <Ionicons name="add" size={24} color={theme.accentText} />
-      </Pressable>
-    </View>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Switch between grid and list"
+      hitSlop={8}
+      onPress={() => void changeView(viewMode === 'grid' ? 'list' : 'grid')}
+      style={styles.headerButton}
+    >
+      <Ionicons
+        name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'}
+        size={22}
+        color={theme.text}
+      />
+    </Pressable>
   );
 
   return (
     <View style={styles.container}>
-      <Tabs.Screen options={{ title: 'Countdowns', headerRight: headerActions }} />
+      <Tabs.Screen
+        options={{
+          title: 'Countdown',
+          headerRight: headerActions,
+          headerLeft: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open settings"
+              hitSlop={8}
+              onPress={() => router.push('/settings')}
+              style={styles.headerButton}
+            >
+              <Ionicons name="menu" size={24} color={theme.text} />
+            </Pressable>
+          ),
+        }}
+      />
 
       <FlatList
         data={sorted}
@@ -112,7 +104,7 @@ export default function CountdownsScreen() {
           <CountdownCard
             countdown={item}
             now={now}
-            style={viewMode === 'grid' ? styles.gridItem : undefined}
+            style={viewMode === 'grid' ? styles.gridItem : styles.listItem}
             onPress={() => {
               void Haptics.selectionAsync();
               router.push(`/countdown/${item.id}`);
@@ -120,6 +112,15 @@ export default function CountdownsScreen() {
           />
         )}
       />
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Add countdown"
+        onPress={() => router.push('/countdown/new')}
+        style={[styles.fab, { backgroundColor: theme.accent }]}
+      >
+        <Ionicons name="add" size={30} color={theme.accentText} />
+      </Pressable>
     </View>
   );
 }
@@ -127,24 +128,26 @@ export default function CountdownsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addButton: { marginLeft: spacing.xs },
-  // Multi-column rows only divide evenly when each child flexes; without this the
-  // cards size to their content and leave a ragged gap at the right edge.
+  headerButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   gridItem: { flex: 1 },
-  // Column gap lives on the row wrapper and row gap on the content container, so the
-  // two do not stack and double the spacing between cards.
+  listItem: { flex: 1 },
   gridRow: { columnGap: spacing.md },
   list: {
     flexGrow: 1,
     padding: spacing.md,
     rowGap: spacing.md,
-    paddingBottom: spacing.xl * 2,
+    // Clears the floating action button.
+    paddingBottom: spacing.xl * 3,
+  },
+  fab: {
+    position: 'absolute',
+    right: spacing.lg,
+    bottom: spacing.lg,
+    width: 60,
+    height: 60,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
   },
 });

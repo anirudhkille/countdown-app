@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -22,33 +21,49 @@ import {
   scheduleForCountdown,
 } from '../notifications/notificationService';
 import type { CountdownDraft, Direction, Recurrence, Unit } from '../../domain/types';
-import { Card } from '../../ui/Card';
-import { Segmented } from '../../ui/Segmented';
+import { ProgressRing } from '../../ui/ProgressRing';
+import { FieldRow, TextField, ToggleRow } from '../../ui/FieldRow';
+import { OptionPicker } from '../../ui/OptionPicker';
 import { radius, spacing, typography } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
+import { calculateCountdown } from '../../domain/countdown';
+import { useNow } from '../countdowns/useNow';
 import { DateTimeField } from './DateTimeField';
-import { OptionRow } from './OptionRow';
 
 const REMINDER_OPTIONS: { value: string; label: string; hours: number | null }[] = [
   { value: 'none', label: 'Off', hours: null },
-  { value: '1h', label: '1h', hours: 1 },
-  { value: '1d', label: '1d', hours: 24 },
-  { value: '1w', label: '1w', hours: 168 },
+  { value: '1h', label: '1 hour before', hours: 1 },
+  { value: '1d', label: '1 day before', hours: 24 },
+  { value: '1w', label: '1 week before', hours: 168 },
 ];
 
-const SWATCHES: (string | null)[] = [
-  null,
-  '#6C5CE7',
-  '#E8590C',
-  '#2F9E68',
-  '#D6336C',
-  '#1C7ED6',
+const RECURRENCE_OPTIONS: { value: Recurrence; label: string }[] = [
+  { value: 'none', label: 'Does not repeat' },
+  { value: 'weekly', label: 'Every week' },
+  { value: 'monthly', label: 'Every month' },
+  { value: 'yearly', label: 'Every year' },
 ];
+
+const UNIT_OPTIONS: { value: Unit; label: string }[] = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'days', label: 'Days' },
+  { value: 'weeks', label: 'Weeks' },
+  { value: 'months', label: 'Months' },
+  { value: 'years', label: 'Years' },
+];
+
+const DIRECTION_OPTIONS: { value: Direction; label: string }[] = [
+  { value: 'down', label: 'Counting down' },
+  { value: 'up', label: 'Counting up' },
+];
+
+const SWATCHES: (string | null)[] = [null, '#8A8A8A', '#FFFFFF', '#0D9DBB', '#E8590C', '#D6336C'];
 
 export function CountdownEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const theme = useTheme();
+  const now = useNow();
   const isNew = id === 'new';
 
   const [title, setTitle] = useState('');
@@ -59,10 +74,10 @@ export function CountdownEditorScreen() {
   const [unit, setUnit] = useState<Unit>('auto');
   const [reminder, setReminder] = useState<string>('none');
   const [color, setColor] = useState<string | null>(null);
+  const [notes, setNotes] = useState('');
   const [emoji, setEmoji] = useState('');
   const [saving, setSaving] = useState(false);
-  // Theme and font are now app-wide settings, so the editor has no controls for them.
-  // These two still round-trip the stored values so an edit does not discard them.
+  const [picker, setPicker] = useState<null | 'recurrence' | 'unit' | 'direction' | 'reminder'>(null);
   const [storedThemeId, setStoredThemeId] = useState<string>('system');
   const [storedFontFamily, setStoredFontFamily] = useState<string | null>(null);
 
@@ -77,19 +92,30 @@ export function CountdownEditorScreen() {
       setDirection(c.direction);
       setUnit(c.unit);
       setColor(c.color);
+      setNotes(c.notes ?? '');
+      setEmoji(c.emoji ?? '');
       setStoredThemeId(c.themeId);
       setStoredFontFamily(c.fontFamily);
-      setEmoji(c.emoji ?? '');
       if (c.remindAt === null) return;
       const hours = Math.round((c.remindAt - c.targetDate) / 3_600_000);
-      const match = REMINDER_OPTIONS.find((o) => o.hours === -hours);
-      setReminder(match?.value ?? 'none');
+      setReminder(REMINDER_OPTIONS.find((o) => o.hours === -hours)?.value ?? 'none');
     });
   }, [id, isNew]);
 
   const reminderHours = useMemo(
     () => REMINDER_OPTIONS.find((o) => o.value === reminder)?.hours ?? null,
     [reminder]
+  );
+
+  const preview = useMemo(
+    () =>
+      calculateCountdown({
+        occurrence: target.getTime(),
+        now,
+        direction,
+        unit,
+      }),
+    [target, now, direction, unit]
   );
 
   async function save() {
@@ -103,7 +129,7 @@ export function CountdownEditorScreen() {
 
     const draft: CountdownDraft = {
       title: title.trim(),
-      notes: null,
+      notes: notes.trim() || null,
       targetDate,
       anchorDay: recurrence === 'none' ? null : target.getDate(),
       recurrence,
@@ -149,158 +175,189 @@ export function CountdownEditorScreen() {
     ]);
   }
 
+  const openPicker = (which: 'recurrence' | 'unit' | 'direction' | 'reminder') =>
+    setPicker(which);
+
   return (
-    <ScrollView
-      style={{ backgroundColor: theme.background }}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Card theme={theme}>
-        <View style={styles.gapSm}>
-          <Text style={[typography.label, { color: theme.textMuted }]}>Title</Text>
-          <TextInput
+    <View style={styles.container}>
+      <ScrollView
+        style={{ backgroundColor: theme.background }}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={[styles.previewCard, { backgroundColor: theme.surface }]}>
+          <ProgressRing value={preview} direction={direction} size={140} stroke={11} />
+          <Text style={[typography.caption, { color: theme.textMuted }]}>Preview</Text>
+        </View>
+
+        <View style={styles.fields}>
+          <TextField
+            label="What is on that day?"
+            icon="pricetag-outline"
             value={title}
             onChangeText={setTitle}
-            placeholder="e.g. Anna's birthday"
-            placeholderTextColor={theme.textMuted}
-            style={[typography.title, { color: theme.text }]}
+            placeholder="What is on that day?"
           />
-          <TextInput
-            value={emoji}
-            onChangeText={setEmoji}
-            placeholder="Emoji (optional)"
-            placeholderTextColor={theme.textMuted}
-            style={[typography.body, { color: theme.textMuted }]}
-          />
-        </View>
-      </Card>
-
-      <Card theme={theme}>
-        <OptionRow theme={theme} label="Date">
           <DateTimeField
             theme={theme}
             value={target}
             showTime={showTime}
             onChange={setTarget}
+            label="Select a date"
           />
-          <Segmented
-            theme={theme}
-            value={showTime ? 'time' : 'date'}
-            onChange={(v) => setShowTime(v === 'time')}
-            options={[
-              { value: 'date', label: 'Date only' },
-              { value: 'time', label: 'Include time' },
-            ]}
+          <ToggleRow
+            label="Include time"
+            icon="time-outline"
+            value={showTime}
+            onChange={setShowTime}
           />
-        </OptionRow>
-      </Card>
+          <FieldRow
+            label="Recurrence"
+            icon="repeat-outline"
+            value={RECURRENCE_OPTIONS.find((o) => o.value === recurrence)?.label ?? ''}
+            onPress={() => openPicker('recurrence')}
+          />
+          <View style={styles.spacer} />
+          <FieldRow
+            label="Count for"
+            icon="options-outline"
+            value={UNIT_OPTIONS.find((o) => o.value === unit)?.label ?? ''}
+            onPress={() => openPicker('unit')}
+          />
+          <View style={styles.spacer} />
+          <FieldRow
+            label="Direction"
+            icon="swap-vertical-outline"
+            value={DIRECTION_OPTIONS.find((o) => o.value === direction)?.label ?? ''}
+            onPress={() => openPicker('direction')}
+          />
+          <View style={styles.spacer} />
+          <FieldRow
+            label="Remind me"
+            icon="notifications-outline"
+            value={REMINDER_OPTIONS.find((o) => o.value === reminder)?.label ?? ''}
+            onPress={() => openPicker('reminder')}
+          />
+          <View style={styles.spacer} />
+          <TextField
+            label="Your notes"
+            icon="list-outline"
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Your notes"
+            multiline
+          />
+          <View style={styles.spacer} />
+          <TextField
+            label="Emoji"
+            icon="happy-outline"
+            value={emoji}
+            onChangeText={setEmoji}
+            placeholder="Emoji (optional)"
+          />
+        </View>
 
-      <Card theme={theme}>
-        <OptionRow theme={theme} label="Repeats">
-          <Segmented
-            theme={theme}
-            value={recurrence}
-            onChange={setRecurrence}
-            options={[
-              { value: 'none', label: 'Never' },
-              { value: 'weekly', label: 'Weekly' },
-              { value: 'monthly', label: 'Monthly' },
-              { value: 'yearly', label: 'Yearly' },
-            ]}
-          />
-        </OptionRow>
+        <View style={styles.swatches}>
+          {SWATCHES.map((swatch) => (
+            <Pressable
+              key={swatch ?? 'inherit'}
+              accessibilityRole="button"
+              accessibilityLabel={swatch ?? 'Theme default'}
+              onPress={() => setColor(swatch)}
+              style={[
+                styles.swatch,
+                {
+                  backgroundColor: swatch ?? theme.surfaceAlt,
+                  borderColor: color === swatch ? theme.accent : theme.border,
+                  borderWidth: color === swatch ? 3 : 1,
+                },
+              ]}
+            />
+          ))}
+        </View>
 
-        <OptionRow theme={theme} label="Direction" hint="Count up to track time since an event.">
-          <Segmented
-            theme={theme}
-            value={direction}
-            onChange={setDirection}
-            options={[
-              { value: 'down', label: 'Counting down' },
-              { value: 'up', label: 'Counting up' },
-            ]}
-          />
-        </OptionRow>
-
-        <OptionRow theme={theme} label="Show in" hint="Auto picks the largest sensible unit.">
-          <Segmented
-            theme={theme}
-            value={unit}
-            onChange={setUnit}
-            options={[
-              { value: 'auto', label: 'Auto' },
-              { value: 'days', label: 'Days' },
-              { value: 'weeks', label: 'Weeks' },
-              { value: 'months', label: 'Months' },
-              { value: 'years', label: 'Years' },
-            ]}
-          />
-        </OptionRow>
-
-        <OptionRow theme={theme} label="Remind me">
-          <Segmented
-            theme={theme}
-            value={reminder}
-            onChange={setReminder}
-            options={REMINDER_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-          />
-        </OptionRow>
-      </Card>
-
-      <Card theme={theme}>
-        <OptionRow
-          theme={theme}
-          label="Accent colour"
-          hint="Overrides the theme accent for this countdown."
+        <Pressable
+          accessibilityRole="button"
+          disabled={saving}
+          onPress={() => void save()}
+          style={[styles.primary, { backgroundColor: theme.accent, opacity: saving ? 0.6 : 1 }]}
         >
-          <View style={styles.swatches}>
-            {SWATCHES.map((swatch) => (
-              <Pressable
-                key={swatch ?? 'inherit'}
-                accessibilityRole="button"
-                accessibilityLabel={swatch ?? 'Theme default'}
-                onPress={() => setColor(swatch)}
-                style={[
-                  styles.swatch,
-                  {
-                    backgroundColor: swatch ?? theme.surfaceAlt,
-                    borderColor: color === swatch ? theme.accent : theme.border,
-                    borderWidth: color === swatch ? 3 : 1,
-                  },
-                ]}
-              />
-            ))}
-          </View>
-        </OptionRow>
-      </Card>
-
-      <Pressable
-        accessibilityRole="button"
-        disabled={saving}
-        onPress={() => void save()}
-        style={[styles.primary, { backgroundColor: theme.accent, opacity: saving ? 0.6 : 1 }]}
-      >
-        <Text style={[typography.title, { color: theme.accentText }]}>Save</Text>
-      </Pressable>
-
-      {!isNew ? (
-        <Pressable accessibilityRole="button" onPress={confirmDelete} style={styles.delete}>
-          <Text style={[typography.body, { color: '#E03131' }]}>Delete countdown</Text>
+          <Text style={[typography.body, styles.primaryLabel, { color: theme.accentText }]}>
+            SAVE
+          </Text>
         </Pressable>
-      ) : null}
-    </ScrollView>
+
+        {!isNew ? (
+          <Pressable accessibilityRole="button" onPress={confirmDelete} style={styles.delete}>
+            <Text style={[typography.body, { color: '#E03131' }]}>Delete countdown</Text>
+          </Pressable>
+        ) : null}
+      </ScrollView>
+
+      <OptionPicker
+        visible={picker !== null}
+        title={
+          picker === 'recurrence'
+            ? 'Recurrence'
+            : picker === 'unit'
+              ? 'Count for'
+              : picker === 'direction'
+                ? 'Direction'
+                : 'Remind me'
+        }
+        options={(
+          picker === 'recurrence'
+            ? RECURRENCE_OPTIONS
+            : picker === 'unit'
+              ? UNIT_OPTIONS
+              : picker === 'direction'
+                ? DIRECTION_OPTIONS
+                : REMINDER_OPTIONS
+        ) as { value: string; label: string }[]}
+        selected={picker === 'recurrence' ? recurrence : picker === 'unit' ? unit : picker === 'direction' ? direction : reminder}
+        onSelect={(next) => {
+          if (picker === 'recurrence') setRecurrence(next as Recurrence);
+          if (picker === 'unit') setUnit(next as Unit);
+          if (picker === 'direction') setDirection(next as Direction);
+          if (picker === 'reminder') setReminder(next);
+        }}
+        onClose={() => setPicker(null)}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1 },
   content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xl * 2 },
-  gapSm: { gap: spacing.sm },
-  swatches: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-  swatch: { width: 40, height: 40, borderRadius: radius.pill },
+  previewCard: {
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  fields: { gap: spacing.md },
+  spacer: { height: spacing.xs },
+  iconSlot: { width: 28, alignItems: 'center' },
+  notesRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  notesInput: {
+    flex: 1,
+    minHeight: 88,
+    borderRadius: radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: spacing.md,
+    textAlignVertical: 'top',
+  },
+  emojiInput: { paddingVertical: spacing.sm },
+  swatches: { flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' },
+  swatch: { width: 48, height: 48, borderRadius: radius.pill },
   primary: {
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     paddingVertical: spacing.md,
     alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.xl,
   },
+  primaryLabel: { fontWeight: '700', letterSpacing: 1 },
   delete: { paddingVertical: spacing.md, alignItems: 'center' },
 });

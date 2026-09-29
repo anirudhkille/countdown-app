@@ -13,11 +13,13 @@ export function DateTimeField({
   value,
   showTime,
   onChange,
+  label = 'Select a date',
 }: {
   theme: Theme;
   value: Date;
   showTime: boolean;
   onChange: (next: Date) => void;
+  label?: string;
 }) {
   // The picker must only be mounted while the user is actively choosing. Rendering it
   // unconditionally mounts the native Android dialog permanently, where it captures
@@ -25,70 +27,37 @@ export function DateTimeField({
   const [open, setOpen] = useState<PickerMode | null>(null);
 
   const handle = (event: DateTimePickerEvent, selected?: Date) => {
-    if (event.type === 'dismissed' || !selected) {
-      setOpen(null);
-      return;
-    }
-    onChange(selected);
+    if (event.type !== 'dismissed' && selected) onChange(selected);
     setOpen(null);
   };
 
-  const toggle = (mode: PickerMode) => setOpen((current) => (current === mode ? null : mode));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const dateText = `${pad(value.getDate())}/${pad(value.getMonth() + 1)}/${value.getFullYear()}`;
+  const timeText = value.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
+  const chip = (mode: PickerMode, text: string) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={mode === 'date' ? label : 'Select a time'}
+      accessibilityState={{ expanded: open === mode }}
+      onPress={() => setOpen((current) => (current === mode ? null : mode))}
+      style={[
+        styles.chip,
+        { backgroundColor: theme.surfaceAlt, borderColor: theme.border },
+      ]}
+    >
+      <Text style={[typography.body, { color: theme.text }]}>{text}</Text>
+    </Pressable>
+  );
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.row}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Choose date"
-          accessibilityState={{ expanded: open === 'date' }}
-          onPress={() => toggle('date')}
-          style={[
-            styles.chip,
-            {
-              backgroundColor: open === 'date' ? theme.accent : theme.surfaceAlt,
-            },
-          ]}
-        >
-          <Text
-            style={[
-              typography.body,
-              { color: open === 'date' ? theme.accentText : theme.text },
-            ]}
-          >
-            {value.toLocaleDateString(undefined, {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })}
-          </Text>
-        </Pressable>
-        {showTime ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Choose time"
-            accessibilityState={{ expanded: open === 'time' }}
-            onPress={() => toggle('time')}
-            style={[
-              styles.chip,
-              {
-                backgroundColor: open === 'time' ? theme.accent : theme.surfaceAlt,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                typography.body,
-                { color: open === 'time' ? theme.accentText : theme.text },
-              ]}
-            >
-              {value.toLocaleTimeString(undefined, {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </Text>
-          </Pressable>
-        ) : null}
+    <View style={styles.row}>
+      <View style={styles.icon}>
+        <Text style={[typography.body, { color: theme.text }]}>📅</Text>
+      </View>
+      <View style={styles.chips}>
+        {chip('date', dateText)}
+        {showTime ? chip('time', timeText) : null}
       </View>
 
       {open === 'date' ? (
@@ -99,7 +68,6 @@ export function DateTimeField({
           onChange={handle}
         />
       ) : null}
-
       {open === 'time' ? (
         <DateTimePicker
           value={value}
@@ -113,11 +81,15 @@ export function DateTimeField({
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: spacing.sm },
-  row: { flexDirection: 'row', gap: spacing.sm },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  icon: { width: 28, alignItems: 'center' },
+  chips: { flex: 1, flexDirection: 'row', gap: spacing.sm },
   chip: {
+    flex: 1,
+    borderRadius: radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
   },
 });
