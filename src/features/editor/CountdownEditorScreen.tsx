@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,7 +11,6 @@ import * as Crypto from 'expo-crypto';
 import * as Haptics from 'expo-haptics';
 import {
   createCountdown,
-  deleteCountdown,
   getCountdown,
   updateCountdown,
 } from '../../data/countdownRepo';
@@ -75,7 +73,6 @@ export function CountdownEditorScreen() {
   const [reminder, setReminder] = useState<string>('none');
   const [color, setColor] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
-  const [emoji, setEmoji] = useState('');
   const [saving, setSaving] = useState(false);
   const [picker, setPicker] = useState<null | 'recurrence' | 'unit' | 'direction' | 'reminder'>(null);
   const [storedThemeId, setStoredThemeId] = useState<string>('system');
@@ -93,7 +90,6 @@ export function CountdownEditorScreen() {
       setUnit(c.unit);
       setColor(c.color);
       setNotes(c.notes ?? '');
-      setEmoji(c.emoji ?? '');
       setStoredThemeId(c.themeId);
       setStoredFontFamily(c.fontFamily);
       if (c.remindAt === null) return;
@@ -119,10 +115,6 @@ export function CountdownEditorScreen() {
   );
 
   async function save() {
-    if (!title.trim()) {
-      Alert.alert('Title required', 'Give this countdown a name.');
-      return;
-    }
     setSaving(true);
     const now = Date.now();
     const targetDate = target.getTime();
@@ -139,7 +131,7 @@ export function CountdownEditorScreen() {
       themeId: storedThemeId,
       color,
       fontFamily: storedFontFamily,
-      emoji: emoji.trim() || null,
+      emoji: null,
       remindAt: reminderHours === null ? null : targetDate - reminderHours * 3_600_000,
     };
 
@@ -158,21 +150,6 @@ export function CountdownEditorScreen() {
     } finally {
       setSaving(false);
     }
-  }
-
-  function confirmDelete() {
-    Alert.alert('Delete countdown?', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await cancelForCountdown(id);
-          await deleteCountdown(id);
-          router.back();
-        },
-      },
-    ]);
   }
 
   const openPicker = (which: 'recurrence' | 'unit' | 'direction' | 'reminder') =>
@@ -247,14 +224,6 @@ export function CountdownEditorScreen() {
             placeholder="Your notes"
             multiline
           />
-          <View style={styles.spacer} />
-          <TextField
-            label="Emoji"
-            icon="happy-outline"
-            value={emoji}
-            onChangeText={setEmoji}
-            placeholder="Emoji (optional)"
-          />
         </View>
 
         <View style={styles.swatches}>
@@ -286,12 +255,6 @@ export function CountdownEditorScreen() {
             SAVE
           </Text>
         </Pressable>
-
-        {!isNew ? (
-          <Pressable accessibilityRole="button" onPress={confirmDelete} style={styles.delete}>
-            <Text style={[typography.body, { color: '#E03131' }]}>Delete countdown</Text>
-          </Pressable>
-        ) : null}
       </ScrollView>
 
       <OptionPicker

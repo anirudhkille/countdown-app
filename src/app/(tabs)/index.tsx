@@ -104,6 +104,7 @@ export default function CountdownsScreen() {
           <CountdownCard
             countdown={item}
             now={now}
+            layout={viewMode}
             style={viewMode === 'grid' ? styles.gridItem : styles.listItem}
             onPress={() => {
               void Haptics.selectionAsync();

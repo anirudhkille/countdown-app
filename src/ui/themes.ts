@@ -5,6 +5,10 @@ export interface Theme {
   surface: string;
   surfaceAlt: string;
   header: string;
+  /** Ring interiors read as a light disc punched out of the dark card. */
+  ringInterior: string;
+  /** Ink on the ring interior, which is always light. */
+  ringInk: string;
   text: string;
   textMuted: string;
   accent: string;
@@ -17,6 +21,8 @@ export const DARK: Theme = {
   surface: '#1F1F1F',
   surfaceAlt: '#2A2A2A',
   header: '#2B2B33',
+  ringInterior: '#FFFFFF',
+  ringInk: '#111114',
   text: '#FFFFFF',
   textMuted: '#8A8A8A',
   accent: '#0D9DBB',
@@ -29,6 +35,8 @@ export const LIGHT: Theme = {
   surface: '#FFFFFF',
   surfaceAlt: '#ECECEF',
   header: '#FFFFFF',
+  ringInterior: '#FFFFFF',
+  ringInk: '#16181C',
   text: '#16181C',
   textMuted: '#6B7280',
   accent: '#0D9DBB',
