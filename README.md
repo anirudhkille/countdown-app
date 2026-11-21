@@ -69,6 +69,8 @@ Theme and font are app-wide settings; colour is per countdown.
 
 `runtimeVersion` follows `appVersion`. JavaScript, styling, and asset changes can ship over the air to a build with the same version. Adding a native module, changing a config plugin, or upgrading the SDK requires a new build and a version bump.
 
+Build numbers are read from `app.json` (`android.versionCode`). The production profile increments it for each build, so commit the updated value before the next release.
+
 ```bash
 bunx eas-cli build --profile preview --platform android
 bunx eas-cli update --channel preview --environment preview --message "Polish the editor"
