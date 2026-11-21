@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '../../ui/ThemeProvider';
@@ -8,22 +9,25 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { backgroundColor: theme.header },
-        headerTintColor: theme.text,
-        headerTitleStyle: { fontWeight: '700' },
-        tabBarStyle: { backgroundColor: theme.surface, borderTopColor: theme.border },
-        tabBarActiveTintColor: theme.accent,
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: theme.surface,
+          borderTopColor: theme.border,
+          borderTopWidth: StyleSheet.hairlineWidth,
+        },
+        tabBarActiveTintColor: theme.accentInk,
         tabBarInactiveTintColor: theme.textMuted,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarHideOnKeyboard: true,
         sceneStyle: { backgroundColor: theme.background },
       }}
     >
-      {/* Titles and header actions are declared by each screen so the screen owns
-          its own state (e.g. the list/grid toggle). */}
       <Tabs.Screen
         name="index"
         options={{
+          title: 'Countdown',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="timer-outline" size={size} color={color} />
+            <Ionicons name="time-outline" size={size} color={color} />
           ),
         }}
       />
@@ -32,7 +36,7 @@ export default function TabsLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="color-palette-outline" size={size} color={color} />
+            <Ionicons name="settings-outline" size={size} color={color} />
           ),
         }}
       />

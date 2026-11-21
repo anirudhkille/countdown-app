@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,6 +11,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   createCountdown,
   getCountdown,
@@ -20,9 +23,9 @@ import {
 } from '../notifications/notificationService';
 import type { CountdownDraft, Direction, Recurrence, Unit } from '../../domain/types';
 import { ProgressRing } from '../../ui/ProgressRing';
-import { FieldRow, TextField, ToggleRow } from '../../ui/FieldRow';
+import { FormGroup, FormInput, FormRow, FormSwitch } from '../../ui/FieldRow';
 import { OptionPicker } from '../../ui/OptionPicker';
-import { radius, spacing, typography } from '../../ui/tokens';
+import { control, radius, spacing, typography } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
 import { calculateCountdown } from '../../domain/countdown';
 import { useNow } from '../countdowns/useNow';
@@ -55,12 +58,23 @@ const DIRECTION_OPTIONS: { value: Direction; label: string }[] = [
   { value: 'up', label: 'Counting up' },
 ];
 
-const SWATCHES: (string | null)[] = [null, '#8A8A8A', '#FFFFFF', '#0D9DBB', '#E8590C', '#D6336C'];
+const SWATCHES: (string | null)[] = [
+  null,
+  '#D9B44A',
+  '#D9694A',
+  '#5B8C7B',
+  '#5A7DB5',
+  '#B06A9A',
+  '#8C9299',
+];
+
+type Picker = 'recurrence' | 'unit' | 'direction' | 'reminder';
 
 export function CountdownEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const now = useNow();
   const isNew = id === 'new';
 
@@ -74,7 +88,7 @@ export function CountdownEditorScreen() {
   const [color, setColor] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
-  const [picker, setPicker] = useState<null | 'recurrence' | 'unit' | 'direction' | 'reminder'>(null);
+  const [picker, setPicker] = useState<Picker | null>(null);
   const [storedThemeId, setStoredThemeId] = useState<string>('system');
   const [storedFontFamily, setStoredFontFamily] = useState<string | null>(null);
 
@@ -116,7 +130,7 @@ export function CountdownEditorScreen() {
 
   async function save() {
     setSaving(true);
-    const now = Date.now();
+    const savedAt = Date.now();
     const targetDate = target.getTime();
 
     const draft: CountdownDraft = {
@@ -137,10 +151,10 @@ export function CountdownEditorScreen() {
 
     try {
       if (isNew) {
-        const created = await createCountdown(draft, Crypto.randomUUID(), now);
+        const created = await createCountdown(draft, Crypto.randomUUID(), savedAt);
         await scheduleForCountdown(created);
       } else {
-        await updateCountdown(id, draft, now);
+        await updateCountdown(id, draft, savedAt);
         const updated = await getCountdown(id);
         await cancelForCountdown(id);
         if (updated) await scheduleForCountdown(updated);
@@ -152,122 +166,160 @@ export function CountdownEditorScreen() {
     }
   }
 
-  const openPicker = (which: 'recurrence' | 'unit' | 'direction' | 'reminder') =>
-    setPicker(which);
+  const dateText = target.toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  const timeText = target.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const pickerTitle =
+    picker === 'recurrence'
+      ? 'Repeats'
+      : picker === 'unit'
+        ? 'Count in'
+        : picker === 'direction'
+          ? 'Direction'
+          : 'Reminder';
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ScrollView
         style={{ backgroundColor: theme.background }}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: insets.bottom + spacing.xxl },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.previewCard, { backgroundColor: theme.surface }]}>
-          <ProgressRing value={preview} direction={direction} size={140} stroke={11} />
-          <Text style={[typography.caption, { color: theme.textMuted }]}>Preview</Text>
+        <View style={styles.stage}>
+          <Text
+            numberOfLines={2}
+            style={[typography.title, styles.stageTitle, { color: title.trim() ? theme.text : theme.textMuted }]}
+          >
+            {title.trim() || 'Untitled countdown'}
+          </Text>
+          <ProgressRing
+            value={preview}
+            direction={direction}
+            size={176}
+            stroke={9}
+            color={color}
+          />
+          <Text style={[typography.caption, { color: theme.textMuted }]}>
+            {dateText}
+            {showTime ? ` at ${timeText}` : ''}
+          </Text>
         </View>
 
-        <View style={styles.fields}>
-          <TextField
-            label="What is on that day?"
-            icon="pricetag-outline"
+        <FormGroup title="Event">
+          <FormInput
+            label="Name"
             value={title}
             onChangeText={setTitle}
-            placeholder="What is on that day?"
+            placeholder="Trip to Lisbon"
           />
           <DateTimeField
-            theme={theme}
             value={target}
             showTime={showTime}
             onChange={setTarget}
-            label="Select a date"
           />
-          <ToggleRow
-            label="Include time"
-            icon="time-outline"
-            value={showTime}
-            onChange={setShowTime}
+          <FormSwitch label="Include a time" value={showTime} onChange={setShowTime} />
+        </FormGroup>
+
+        <FormGroup title="Schedule">
+          <FormRow
+            label="Repeats"
+            value={RECURRENCE_OPTIONS.find((o) => o.value === recurrence)?.label}
+            onPress={() => setPicker('recurrence')}
           />
-          <FieldRow
-            label="Recurrence"
-            icon="repeat-outline"
-            value={RECURRENCE_OPTIONS.find((o) => o.value === recurrence)?.label ?? ''}
-            onPress={() => openPicker('recurrence')}
+          <FormRow
+            label="Count in"
+            value={UNIT_OPTIONS.find((o) => o.value === unit)?.label}
+            onPress={() => setPicker('unit')}
           />
-          <View style={styles.spacer} />
-          <FieldRow
-            label="Count for"
-            icon="options-outline"
-            value={UNIT_OPTIONS.find((o) => o.value === unit)?.label ?? ''}
-            onPress={() => openPicker('unit')}
-          />
-          <View style={styles.spacer} />
-          <FieldRow
+          <FormRow
             label="Direction"
-            icon="swap-vertical-outline"
-            value={DIRECTION_OPTIONS.find((o) => o.value === direction)?.label ?? ''}
-            onPress={() => openPicker('direction')}
+            value={DIRECTION_OPTIONS.find((o) => o.value === direction)?.label}
+            onPress={() => setPicker('direction')}
           />
-          <View style={styles.spacer} />
-          <FieldRow
-            label="Remind me"
-            icon="notifications-outline"
-            value={REMINDER_OPTIONS.find((o) => o.value === reminder)?.label ?? ''}
-            onPress={() => openPicker('reminder')}
+          <FormRow
+            label="Reminder"
+            value={REMINDER_OPTIONS.find((o) => o.value === reminder)?.label}
+            onPress={() => setPicker('reminder')}
           />
-          <View style={styles.spacer} />
-          <TextField
-            label="Your notes"
-            icon="list-outline"
+        </FormGroup>
+
+        <FormGroup title="Color">
+          <View style={styles.swatchRow}>
+            {SWATCHES.map((swatch) => {
+              const selected = color === swatch;
+              return (
+                <Pressable
+                  key={swatch ?? 'default'}
+                  accessibilityRole="button"
+                  accessibilityLabel={swatch ?? 'Default color'}
+                  accessibilityState={{ selected }}
+                  onPress={() => setColor(swatch)}
+                  style={[
+                    styles.swatchOuter,
+                    { borderColor: selected ? theme.accentInk : 'transparent' },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.swatch,
+                      {
+                        backgroundColor: swatch ?? theme.surfaceAlt,
+                        borderColor: swatch ? 'transparent' : theme.borderStrong,
+                      },
+                    ]}
+                  >
+                    {swatch === null ? (
+                      <View style={[styles.defaultDot, { backgroundColor: theme.accent }]} />
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </FormGroup>
+
+        <FormGroup title="Notes">
+          <FormInput
+            label="Notes"
             value={notes}
             onChangeText={setNotes}
-            placeholder="Your notes"
+            placeholder="Anything you want to remember"
             multiline
           />
-        </View>
-
-        <View style={styles.swatches}>
-          {SWATCHES.map((swatch) => (
-            <Pressable
-              key={swatch ?? 'inherit'}
-              accessibilityRole="button"
-              accessibilityLabel={swatch ?? 'Theme default'}
-              onPress={() => setColor(swatch)}
-              style={[
-                styles.swatch,
-                {
-                  backgroundColor: swatch ?? theme.surfaceAlt,
-                  borderColor: color === swatch ? theme.accent : theme.border,
-                  borderWidth: color === swatch ? 3 : 1,
-                },
-              ]}
-            />
-          ))}
-        </View>
+        </FormGroup>
 
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={isNew ? 'Save countdown' : 'Save changes'}
           disabled={saving}
           onPress={() => void save()}
-          style={[styles.primary, { backgroundColor: theme.accent, opacity: saving ? 0.6 : 1 }]}
+          style={({ pressed }) => [
+            styles.save,
+            {
+              backgroundColor: theme.accent,
+              opacity: saving ? 0.6 : pressed ? 0.85 : 1,
+            },
+          ]}
         >
-          <Text style={[typography.body, styles.primaryLabel, { color: theme.accentText }]}>
-            SAVE
+          <Text style={[typography.bodyStrong, styles.saveLabel, { color: theme.accentText }]}>
+            {saving ? 'Saving…' : isNew ? 'Save countdown' : 'Save changes'}
           </Text>
         </Pressable>
       </ScrollView>
 
       <OptionPicker
         visible={picker !== null}
-        title={
-          picker === 'recurrence'
-            ? 'Recurrence'
-            : picker === 'unit'
-              ? 'Count for'
-              : picker === 'direction'
-                ? 'Direction'
-                : 'Remind me'
-        }
+        title={pickerTitle}
         options={(
           picker === 'recurrence'
             ? RECURRENCE_OPTIONS
@@ -277,7 +329,15 @@ export function CountdownEditorScreen() {
                 ? DIRECTION_OPTIONS
                 : REMINDER_OPTIONS
         ) as { value: string; label: string }[]}
-        selected={picker === 'recurrence' ? recurrence : picker === 'unit' ? unit : picker === 'direction' ? direction : reminder}
+        selected={
+          picker === 'recurrence'
+            ? recurrence
+            : picker === 'unit'
+              ? unit
+              : picker === 'direction'
+                ? direction
+                : reminder
+        }
         onSelect={(next) => {
           if (picker === 'recurrence') setRecurrence(next as Recurrence);
           if (picker === 'unit') setUnit(next as Unit);
@@ -286,41 +346,52 @@ export function CountdownEditorScreen() {
         }}
         onClose={() => setPicker(null)}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xl * 2 },
-  previewCard: {
-    borderRadius: radius.lg,
-    paddingVertical: spacing.lg,
+  content: {
+    paddingHorizontal: control.gutter,
+    paddingTop: spacing.sm,
+    gap: spacing.lg,
+  },
+  stage: {
     alignItems: 'center',
+    gap: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
+  },
+  stageTitle: { textAlign: 'center', paddingHorizontal: spacing.md },
+  swatchRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
-  },
-  fields: { gap: spacing.md },
-  spacer: { height: spacing.xs },
-  iconSlot: { width: 28, alignItems: 'center' },
-  notesRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-  notesInput: {
-    flex: 1,
-    minHeight: 88,
-    borderRadius: radius.sm,
-    borderWidth: StyleSheet.hairlineWidth,
     padding: spacing.md,
-    textAlignVertical: 'top',
   },
-  emojiInput: { paddingVertical: spacing.sm },
-  swatches: { flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' },
-  swatch: { width: 48, height: 48, borderRadius: radius.pill },
-  primary: {
+  swatchOuter: {
+    width: 40,
+    height: 40,
     borderRadius: radius.pill,
-    paddingVertical: spacing.md,
+    borderWidth: 1.5,
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.xl,
+    justifyContent: 'center',
   },
-  primaryLabel: { fontWeight: '700', letterSpacing: 1 },
-  delete: { paddingVertical: spacing.md, alignItems: 'center' },
+  swatch: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  defaultDot: { width: 10, height: 10, borderRadius: 5 },
+  save: {
+    borderRadius: radius.md,
+    minHeight: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveLabel: { fontSize: 16 },
 });

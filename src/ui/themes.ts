@@ -5,43 +5,50 @@ export interface Theme {
   surface: string;
   surfaceAlt: string;
   header: string;
-  /** Ring interiors read as a light disc punched out of the dark card. */
-  ringInterior: string;
-  /** Ink on the ring interior, which is always light. */
-  ringInk: string;
   text: string;
   textMuted: string;
+  textFaint: string;
   accent: string;
+  accentInk: string;
   accentText: string;
   border: string;
+  borderStrong: string;
+  danger: string;
+  track: string;
 }
 
 export const DARK: Theme = {
-  background: '#121212',
-  surface: '#1F1F1F',
-  surfaceAlt: '#2A2A2A',
-  header: '#2B2B33',
-  ringInterior: '#FFFFFF',
-  ringInk: '#111114',
-  text: '#FFFFFF',
-  textMuted: '#8A8A8A',
-  accent: '#0D9DBB',
-  accentText: '#FFFFFF',
-  border: '#2E2E2E',
+  background: '#0F1419',
+  surface: '#161C23',
+  surfaceAlt: '#1E262F',
+  header: '#0F1419',
+  text: '#F3F1EA',
+  textMuted: '#9AA3AC',
+  textFaint: '#6C7680',
+  accent: '#D9B44A',
+  accentInk: '#E4C462',
+  accentText: '#161206',
+  border: '#273039',
+  borderStrong: '#3A4550',
+  danger: '#E5484D',
+  track: '#2B3540',
 };
 
 export const LIGHT: Theme = {
-  background: '#F4F4F6',
+  background: '#F4F2EC',
   surface: '#FFFFFF',
-  surfaceAlt: '#ECECEF',
-  header: '#FFFFFF',
-  ringInterior: '#FFFFFF',
-  ringInk: '#16181C',
-  text: '#16181C',
-  textMuted: '#6B7280',
-  accent: '#0D9DBB',
-  accentText: '#FFFFFF',
-  border: '#E2E2E6',
+  surfaceAlt: '#EDEAE1',
+  header: '#F4F2EC',
+  text: '#141A20',
+  textMuted: '#5E6A74',
+  textFaint: '#8A939B',
+  accent: '#C39A2B',
+  accentInk: '#8A6710',
+  accentText: '#1A1404',
+  border: '#E0DCD0',
+  borderStrong: '#CFC9BA',
+  danger: '#C0392B',
+  track: '#E4DFD2',
 };
 
 export const THEME_OPTIONS: { id: ThemeId; label: string }[] = [
@@ -51,12 +58,6 @@ export const THEME_OPTIONS: { id: ThemeId; label: string }[] = [
 ];
 
 export const DEFAULT_THEME_ID: ThemeId = 'system';
-
-/** Circle interiors in the reference design are always the page background. */
-export const RING_INNER = {
-  light: '#FFFFFF',
-  dark: '#1F1F1F',
-} as const;
 
 export function getTheme(id: string | null | undefined, isDark: boolean): Theme {
   if (id === 'light') return LIGHT;

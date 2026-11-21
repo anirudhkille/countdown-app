@@ -1,6 +1,7 @@
 import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { radius, spacing, typography } from './tokens';
 import { useTheme } from './ThemeProvider';
 
@@ -8,9 +9,9 @@ export interface PickerOption {
   value: string;
   label: string;
   fontFamily?: string;
+  swatch?: string;
 }
 
-/** Modal radio list, used by both the settings rows and the editor's dropdowns. */
 export function OptionPicker({
   visible,
   title,
@@ -27,6 +28,7 @@ export function OptionPicker({
   onClose: () => void;
 }) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -38,10 +40,18 @@ export function OptionPicker({
       >
         <Pressable
           accessibilityViewIsModal
-          style={[styles.sheet, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              paddingBottom: insets.bottom + spacing.md,
+            },
+          ]}
           onPress={(event) => event.stopPropagation()}
         >
-          <Text style={[typography.label, styles.title, { color: theme.accent }]}>{title}</Text>
+          <View style={[styles.grabber, { backgroundColor: theme.borderStrong }]} />
+          <Text style={[typography.title, styles.title, { color: theme.text }]}>{title}</Text>
           <ScrollView>
             {options.map((option) => {
               const isSelected = option.value === selected;
@@ -52,23 +62,32 @@ export function OptionPicker({
                   accessibilityState={{ selected: isSelected }}
                   accessibilityLabel={option.label}
                   onPress={() => onSelect(option.value)}
-                  style={styles.option}
+                  style={({ pressed }) => [
+                    styles.option,
+                    pressed ? { backgroundColor: theme.surfaceAlt } : null,
+                  ]}
                 >
+                  {option.swatch ? (
+                    <View
+                      style={[
+                        styles.swatch,
+                        { backgroundColor: option.swatch, borderColor: theme.borderStrong },
+                      ]}
+                    />
+                  ) : null}
                   <Text
                     style={[
                       typography.body,
                       styles.optionLabel,
-                      { color: isSelected ? theme.accent : theme.text },
-                      option.fontFamily ? { fontFamily: option.fontFamily } : null,
+                      { color: theme.text },
+                      option.fontFamily ? { fontFamily: option.fontFamily, fontSize: 18 } : null,
                     ]}
                   >
                     {option.label}
                   </Text>
-                  <Ionicons
-                    name={isSelected ? 'radio-button-on' : 'radio-button-off'}
-                    size={20}
-                    color={isSelected ? theme.accent : theme.textMuted}
-                  />
+                  {isSelected ? (
+                    <Ionicons name="checkmark" size={22} color={theme.accentInk} />
+                  ) : null}
                 </Pressable>
               );
             })}
@@ -82,23 +101,37 @@ export function OptionPicker({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    justifyContent: 'center',
-    padding: spacing.lg,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   sheet: {
-    borderRadius: radius.lg,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: spacing.sm,
-    maxHeight: '70%',
+    paddingTop: spacing.sm,
+    maxHeight: '78%',
   },
-  title: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  grabber: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: spacing.sm,
+  },
+  title: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 14,
+    minHeight: 52,
   },
   optionLabel: { flex: 1 },
+  swatch: {
+    width: 22,
+    height: 22,
+    borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
 });

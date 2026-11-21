@@ -3,46 +3,35 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { spacing, typography } from './tokens';
 import { useTheme } from './ThemeProvider';
 
-const HEADER_HEIGHT = 52;
+const HEADER_HEIGHT = 56;
 
-/**
- * Replaces the native stack header on pushed screens.
- *
- * The native-stack header applies its own status-bar inset, which on an edge-to-edge
- * Android app stacks with the window inset and leaves roughly one extra status bar of
- * dead space above the title. This reads the inset once and pads by exactly that, so
- * the pushed screens sit flush with the tab screens.
- */
 export function StackHeader({ title }: { title: string }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          paddingTop: insets.top,
-          backgroundColor: theme.background,
-          borderBottomColor: theme.border,
-        },
-      ]}
-    >
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.background }]}>
       <View style={styles.row}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          hitSlop={12}
+          hitSlop={8}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-          style={styles.back}
+          style={({ pressed }) => [
+            styles.back,
+            {
+              backgroundColor: theme.surfaceAlt,
+              borderColor: theme.border,
+              opacity: pressed ? 0.6 : 1,
+            },
+          ]}
         >
-          <Ionicons name="chevron-back" size={26} color={theme.text} />
+          <Ionicons name="chevron-back" size={20} color={theme.text} />
         </Pressable>
-        <Text numberOfLines={1} style={[typography.title, styles.title, { color: theme.text }]}>
+        <Text numberOfLines={1} style={[styles.title, { color: theme.text }]}>
           {title}
         </Text>
       </View>
@@ -51,14 +40,27 @@ export function StackHeader({ title }: { title: string }) {
 }
 
 const styles = StyleSheet.create({
-  container: { borderBottomWidth: StyleSheet.hairlineWidth },
+  container: {},
   row: {
     height: HEADER_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.xs,
-    gap: spacing.xs,
+    paddingHorizontal: 16,
+    gap: 12,
   },
-  back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1 },
+  back: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    flex: 1,
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: '600',
+    letterSpacing: -0.3,
+  },
 });

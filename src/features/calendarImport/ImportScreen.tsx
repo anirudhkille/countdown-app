@@ -6,6 +6,7 @@ import * as Crypto from 'expo-crypto';
 import { createCountdown } from '../../data/countdownRepo';
 import { scheduleForCountdown } from '../notifications/notificationService';
 import { useNow } from '../countdowns/useNow';
+import { EmptyState } from '../../ui/EmptyState';
 import { radius, spacing, typography } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
 import { DEFAULT_THEME_ID } from '../../ui/themes';
@@ -15,6 +16,19 @@ import {
   listImportableEvents,
   type ImportableEvent,
 } from './importEvents';
+
+function DateBadge({ date }: { date: number }) {
+  const theme = useTheme();
+  const value = new Date(date);
+  return (
+    <View style={[styles.badge, { backgroundColor: theme.surfaceAlt }]}>
+      <Text style={[styles.badgeDay, { color: theme.text }]}>{value.getDate()}</Text>
+      <Text style={[typography.micro, { color: theme.textMuted }]}>
+        {value.toLocaleDateString(undefined, { month: 'short' })}
+      </Text>
+    </View>
+  );
+}
 
 export function ImportScreen() {
   const theme = useTheme();
@@ -38,8 +52,6 @@ export function ImportScreen() {
       const granted = await hasCalendarPermission();
       if (cancelled) return;
       if (!granted) {
-        // The module resolved but the native call failed, so this is a missing native
-        // module rather than a permission the user declined.
         if (!isCalendarAvailable()) {
           setUnavailable(true);
         } else {
@@ -51,7 +63,7 @@ export function ImportScreen() {
         setLoading(false);
         return;
       }
-      const current = new Date(now);
+      const current = new Date();
       const start = new Date(current.getFullYear(), current.getMonth() - 1, 1);
       const end = new Date(current.getFullYear() + 2, current.getMonth() + 1, 1);
       const found = await listImportableEvents(start, end);
@@ -63,29 +75,7 @@ export function ImportScreen() {
     return () => {
       cancelled = true;
     };
-  }, [now]);
-
-  if (unavailable) {
-    return (
-      <View style={[styles.unavailable, { backgroundColor: theme.background }]}>
-        <Text style={[typography.title, { color: theme.text, textAlign: 'center' }]}>
-          Calendar import needs a development build
-        </Text>
-        <Text style={[typography.body, styles.unavailableBody, { color: theme.textMuted }]}>
-          Expo Go does not include calendar access. Run{'\n'}
-          <Text style={{ fontFamily: 'monospace' }}>expo run:android</Text> to install a
-          development build, then try again.
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.back()}
-          style={[styles.backButton, { borderColor: theme.border }]}
-        >
-          <Text style={[typography.body, { color: theme.text }]}>Back</Text>
-        </Pressable>
-      </View>
-    );
-  }
+  }, []);
 
   async function importEvent(event: ImportableEvent) {
     const date = new Date(event.date);
@@ -114,39 +104,94 @@ export function ImportScreen() {
     router.back();
   }
 
+  if (unavailable) {
+    return (
+      <View style={[styles.unavailable, { backgroundColor: theme.background }]}>
+        <View style={[styles.unavailableIcon, { backgroundColor: theme.surfaceAlt }]}>
+          <Ionicons name="calendar-outline" size={30} color={theme.textMuted} />
+        </View>
+        <Text style={[typography.title, styles.unavailableTitle, { color: theme.text }]}>
+          Calendar import needs a development build
+        </Text>
+        <Text style={[typography.body, styles.unavailableBody, { color: theme.textMuted }]}>
+          Expo Go does not include calendar access. Install a development build with the command
+          below, then try again.
+        </Text>
+        <View style={[styles.code, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[typography.caption, { color: theme.text, fontFamily: 'monospace' }]}>
+            expo run:android
+          </Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.back()}
+          style={({ pressed }) => [
+            styles.backButton,
+            { borderColor: theme.border, opacity: pressed ? 0.6 : 1 },
+          ]}
+        >
+          <Text style={[typography.body, { color: theme.text }]}>Go back</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.fill, { backgroundColor: theme.background }]}>
       {loading ? (
-        <Text style={[typography.body, styles.loading, { color: theme.textMuted }]}>
-          Reading your calendar…
-        </Text>
+        <View style={styles.loading}>
+          <Text style={[typography.body, { color: theme.textMuted }]}>Reading your calendar…</Text>
+        </View>
       ) : (
         <FlatList
           data={events}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            <View style={styles.intro}>
+              <Text style={[typography.body, { color: theme.textMuted }]}>
+                Events from the next two years and the past month. Tap one to turn it into a
+                countdown.
+              </Text>
+            </View>
+          }
+          ListEmptyComponent={
+            <EmptyState
+              theme={theme}
+              title="No events found"
+              message="Once your calendar has upcoming events, they will show up here."
+            />
+          }
           renderItem={({ item }) => (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Import ${item.title}`}
               onPress={() => void importEvent(item)}
-              style={[
+              style={({ pressed }) => [
                 styles.row,
-                { backgroundColor: theme.surface, borderColor: theme.border },
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                  opacity: pressed ? 0.7 : 1,
+                },
               ]}
             >
+              <DateBadge date={item.date} />
               <View style={styles.rowText}>
-                <Text style={[typography.body, { color: theme.text }]}>{item.title}</Text>
-                <Text style={[typography.caption, { color: theme.textMuted }]}>
+                <Text numberOfLines={1} style={[typography.bodyStrong, { color: theme.text }]}>
+                  {item.title}
+                </Text>
+                <Text numberOfLines={1} style={[typography.caption, { color: theme.textMuted }]}>
                   {new Date(item.date).toLocaleDateString(undefined, {
+                    weekday: 'short',
                     day: 'numeric',
                     month: 'short',
                     year: 'numeric',
                   })}
-                  {item.allDay ? ' · all day' : ''}
+                  {item.allDay ? ', all day' : ''}
                 </Text>
               </View>
-              <Ionicons name="add-circle" size={24} color={theme.accent} />
+              <Ionicons name="add-circle-outline" size={24} color={theme.accentInk} />
             </Pressable>
           )}
         />
@@ -157,27 +202,52 @@ export function ImportScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  loading: { padding: spacing.lg },
-  unavailable: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  unavailableBody: { textAlign: 'center' },
-  backButton: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radius.pill,
-    paddingVertical: spacing.md,
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  intro: { paddingBottom: spacing.sm, paddingHorizontal: spacing.xs },
+  badge: {
+    width: 46,
+    height: 46,
+    borderRadius: radius.sm,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  list: { padding: spacing.md, gap: spacing.sm },
+  badgeDay: { fontSize: 17, lineHeight: 20, fontWeight: '700' },
+  list: { padding: spacing.md, gap: spacing.sm, paddingBottom: spacing.xl },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
+    gap: spacing.md,
+    padding: 12,
     borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
   },
   rowText: { flex: 1, gap: 2 },
+  unavailable: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  unavailableIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unavailableTitle: { textAlign: 'center' },
+  unavailableBody: { textAlign: 'center', maxWidth: 320 },
+  code: {
+    borderRadius: radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+  },
+  backButton: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.md,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.xl,
+  },
 });

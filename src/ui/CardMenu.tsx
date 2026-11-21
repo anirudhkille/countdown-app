@@ -12,7 +12,6 @@ export interface MenuAction {
   onPress: () => void;
 }
 
-/** Bottom-anchored action sheet, the Android equivalent of an overflow menu. */
 export function CardMenu({
   visible,
   title,
@@ -35,53 +34,73 @@ export function CardMenu({
         style={styles.backdrop}
         onPress={onClose}
       >
-        <View style={[styles.sheet, { backgroundColor: theme.surface, paddingBottom: insets.bottom + spacing.md }]}>
-          <Text numberOfLines={1} style={[typography.label, styles.title, { color: theme.textMuted }]}>
+        <Pressable
+          accessibilityViewIsModal
+          onPress={(event) => event.stopPropagation()}
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              paddingBottom: insets.bottom + spacing.sm,
+            },
+          ]}
+        >
+          <View style={[styles.grabber, { backgroundColor: theme.borderStrong }]} />
+          <Text numberOfLines={1} style={[typography.caption, styles.title, { color: theme.textMuted }]}>
             {title}
           </Text>
-          {actions.map((action) => (
-            <Pressable
-              key={action.label}
-              accessibilityRole="button"
-              accessibilityLabel={action.label}
-              onPress={() => {
-                onClose();
-                action.onPress();
-              }}
-              style={styles.action}
-            >
-              <Ionicons
-                name={action.icon}
-                size={20}
-                color={action.destructive ? '#E03131' : theme.text}
-              />
-              <Text
-                style={[
-                  typography.body,
-                  styles.actionLabel,
-                  { color: action.destructive ? '#E03131' : theme.text },
+          {actions.map((action) => {
+            const tint = action.destructive ? theme.danger : theme.text;
+            return (
+              <Pressable
+                key={action.label}
+                accessibilityRole="button"
+                accessibilityLabel={action.label}
+                onPress={() => {
+                  onClose();
+                  action.onPress();
+                }}
+                style={({ pressed }) => [
+                  styles.action,
+                  pressed ? { backgroundColor: theme.surfaceAlt } : null,
                 ]}
               >
-                {action.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+                <Ionicons name={action.icon} size={20} color={tint} />
+                <Text style={[typography.body, styles.actionLabel, { color: tint }]}>
+                  {action.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </Pressable>
       </Pressable>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.55)' },
-  sheet: { borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, paddingTop: spacing.sm },
+  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  sheet: {
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingTop: spacing.sm,
+  },
+  grabber: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: spacing.sm,
+  },
   title: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   action: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingVertical: 15,
   },
   actionLabel: { flex: 1 },
 });

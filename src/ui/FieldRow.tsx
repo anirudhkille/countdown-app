@@ -1,98 +1,88 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { radius, spacing, typography } from './tokens';
+import { control, radius, spacing, typography } from './tokens';
 import { useTheme } from './ThemeProvider';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
-
-function FieldShell({
-  label,
-  icon,
-  onPress,
+export function FormGroup({
+  title,
   children,
-  style,
 }: {
-  label: string;
-  icon: IconName;
-  onPress?: () => void;
+  title?: string;
   children: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
 }) {
   const theme = useTheme();
-  const body = (
-    <View style={[styles.field, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }, style]}>
-      {children}
-    </View>
-  );
-
+  const items = React.Children.toArray(children);
   return (
-    <View style={styles.row}>
-      <View style={styles.icon}>
-        <Ionicons name={icon} size={22} color={theme.text} />
+    <View style={styles.groupWrap}>
+      {title ? (
+        <Text style={[typography.micro, styles.groupTitle, { color: theme.textMuted }]}>
+          {title}
+        </Text>
+      ) : null}
+      <View
+        style={[
+          styles.group,
+          { backgroundColor: theme.surface, borderColor: theme.border },
+        ]}
+      >
+        {items.map((child, index) => (
+          <React.Fragment key={index}>
+            {child}
+            {index < items.length - 1 ? (
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
+            ) : null}
+          </React.Fragment>
+        ))}
       </View>
-      {onPress ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={label}
-          onPress={onPress}
-          style={styles.fieldWrapper}
-        >
-          {body}
-        </Pressable>
-      ) : (
-        <View style={styles.fieldWrapper}>{body}</View>
-      )}
     </View>
   );
 }
 
-/** A labelled field with a chevron, matching the reference's dropdown rows. */
-export function FieldRow({
+export function FormRow({
   label,
-  icon,
   value,
   onPress,
-  placeholder,
-  style,
 }: {
   label: string;
-  icon: IconName;
-  value: string;
+  value?: string;
   onPress?: () => void;
-  placeholder?: string;
-  style?: StyleProp<ViewStyle>;
 }) {
   const theme = useTheme();
+  const content = (
+    <View style={styles.rowInner}>
+      <Text style={[typography.body, { color: theme.text, flex: 1 }]}>{label}</Text>
+      {value ? (
+        <Text numberOfLines={1} style={[typography.label, styles.value, { color: theme.textMuted }]}>
+          {value}
+        </Text>
+      ) : null}
+      {onPress ? <Ionicons name="chevron-forward" size={16} color={theme.textFaint} /> : null}
+    </View>
+  );
+
+  if (!onPress) return content;
+
   return (
-    <FieldShell label={label} icon={icon} onPress={onPress} style={style}>
-      <View style={styles.fieldInner}>
-        <View style={styles.fieldText}>
-          <Text style={[typography.caption, { color: theme.textMuted }]}>{label}</Text>
-          <Text
-            numberOfLines={1}
-            style={[typography.body, !value ? { color: theme.textMuted } : null]}
-          >
-            {value || placeholder || '—'}
-          </Text>
-        </View>
-        {onPress ? <Ionicons name="chevron-down" size={18} color={theme.textMuted} /> : null}
-      </View>
-    </FieldShell>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={value ? `${label}, ${value}` : label}
+      onPress={onPress}
+      style={({ pressed }) => ({ backgroundColor: pressed ? theme.surfaceAlt : 'transparent' })}
+    >
+      {content}
+    </Pressable>
   );
 }
 
-/** A free-text field with a leading icon, matching the reference's input rows. */
-export function TextField({
+export function FormInput({
   label,
-  icon,
   value,
   onChangeText,
   placeholder,
   multiline,
 }: {
   label: string;
-  icon: IconName;
   value: string;
   onChangeText: (next: string) => void;
   placeholder?: string;
@@ -100,21 +90,20 @@ export function TextField({
 }) {
   const theme = useTheme();
   return (
-    <View style={[styles.row, multiline ? styles.alignTop : null]}>
-      <View style={styles.icon}>
-        <Ionicons name={icon} size={22} color={theme.text} />
-      </View>
+    <View style={[styles.inputWrap, multiline ? styles.inputWrapMultiline : null]}>
+      <Text style={[typography.micro, { color: theme.textMuted }]}>{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
-        placeholder={placeholder ?? label}
-        placeholderTextColor={theme.textMuted}
+        placeholder={placeholder}
+        placeholderTextColor={theme.textFaint}
         accessibilityLabel={label}
         multiline={multiline}
+        selectionColor={theme.accentInk}
         style={[
           typography.body,
           styles.input,
-          { color: theme.text, backgroundColor: theme.surfaceAlt, borderColor: theme.border },
+          { color: theme.text },
           multiline ? styles.inputMultiline : null,
         ]}
       />
@@ -122,75 +111,86 @@ export function TextField({
   );
 }
 
-/** A labelled toggle row. */export function ToggleRow({
+export function FormSwitch({
   label,
-  icon,
   value,
   onChange,
 }: {
   label: string;
-  icon: IconName;
   value: boolean;
   onChange: (next: boolean) => void;
 }) {
   const theme = useTheme();
   return (
-    <FieldShell label={label} icon={icon} onPress={() => onChange(!value)}>
-      <View style={styles.fieldInner}>
-        <Text style={[typography.body, { color: theme.text, flex: 1 }]}>{label}</Text>
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: value }}
+      onPress={() => onChange(!value)}
+      style={({ pressed }) => [
+        styles.rowInner,
+        pressed ? { backgroundColor: theme.surfaceAlt } : null,
+      ]}
+    >
+      <Text style={[typography.body, { color: theme.text, flex: 1 }]}>{label}</Text>
+      <View
+        style={[
+          styles.track,
+          { backgroundColor: value ? theme.accent : theme.borderStrong },
+        ]}
+      >
         <View
-          accessibilityRole="switch"
-          accessibilityState={{ checked: value }}
-          accessibilityLabel={label}
           style={[
-            styles.track,
-            { backgroundColor: value ? theme.accent : theme.border },
+            styles.thumb,
+            {
+              backgroundColor: value ? theme.accentText : theme.surface,
+              alignSelf: value ? 'flex-end' : 'flex-start',
+            },
           ]}
-        >
-          <View
-            style={[
-              styles.thumb,
-              { backgroundColor: theme.text, alignSelf: value ? 'flex-end' : 'flex-start' },
-            ]}
-          />
-        </View>
+        />
       </View>
-    </FieldShell>
+    </Pressable>
   );
 }
 
-/** A label sitting on the top border of a field, as in the reference. */
-export function BorderedLabel({ label, color }: { label: string; color: string }) {
-  return (
-    <View style={styles.borderedLabel}>
-      <Text style={[typography.caption, { color }]}>{label}</Text>
-    </View>
-  );
+export function FormDivider() {
+  const theme = useTheme();
+  return <View style={[styles.divider, { backgroundColor: theme.border }]} />;
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  icon: { width: 28, alignItems: 'center' },
-  fieldWrapper: { flex: 1 },
-  field: { borderRadius: radius.sm, borderWidth: StyleSheet.hairlineWidth },
-  fieldInner: {
+  groupWrap: { gap: spacing.sm },
+  groupTitle: { marginLeft: spacing.xs },
+  group: {
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing.md },
+  rowInner: {
+    minHeight: control.rowHeight,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 12,
   },
-  fieldText: { flex: 1, gap: 2 },
-  alignTop: { alignItems: 'flex-start' },
-  input: {
-    flex: 1,
-    borderRadius: radius.sm,
-    borderWidth: StyleSheet.hairlineWidth,
+  value: { maxWidth: '55%' },
+  inputWrap: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingTop: 12,
+    paddingBottom: 13,
+    gap: 2,
   },
-  inputMultiline: { minHeight: 88, paddingTop: spacing.md, textAlignVertical: 'top' },
-  track: { width: 48, height: 28, borderRadius: radius.pill, padding: 3, justifyContent: 'center' },
+  inputWrapMultiline: { minHeight: 108 },
+  input: { padding: 0, minHeight: 22 },
+  inputMultiline: { minHeight: 66, textAlignVertical: 'top' },
+  track: {
+    width: 46,
+    height: 28,
+    borderRadius: radius.pill,
+    padding: 3,
+    justifyContent: 'center',
+  },
   thumb: { width: 22, height: 22, borderRadius: radius.pill },
-  borderedLabel: { position: 'absolute', top: -8, left: spacing.md, backgroundColor: 'transparent', paddingHorizontal: 4 },
 });

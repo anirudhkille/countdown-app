@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
@@ -7,16 +7,56 @@ import { useCountdowns } from '../../features/countdowns/useCountdowns';
 import { useNow } from '../../features/countdowns/useNow';
 import { CountdownCard } from '../../features/countdowns/CountdownCard';
 import { EmptyState } from '../../ui/EmptyState';
+import { ScreenHeader } from '../../ui/ScreenHeader';
 import { getViewMode as loadViewMode, setViewMode, type ViewMode } from '../../data/settings';
-import { radius, spacing } from '../../ui/tokens';
+import { control, radius, spacing } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
 import { calculateCountdown } from '../../domain/countdown';
 import { resolveOccurrence } from '../../domain/recurrence';
 import type { Countdown } from '../../domain/types';
 
+const GRID_GAP = 12;
+
+function ViewToggle({
+  mode,
+  onChange,
+}: {
+  mode: ViewMode;
+  onChange: (next: ViewMode) => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.toggle, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}>
+      {(['grid', 'list'] as const).map((option) => {
+        const active = mode === option;
+        return (
+          <Pressable
+            key={option}
+            accessibilityRole="button"
+            accessibilityLabel={option === 'grid' ? 'Grid view' : 'List view'}
+            accessibilityState={{ selected: active }}
+            onPress={() => onChange(option)}
+            style={[
+              styles.toggleItem,
+              active ? { backgroundColor: theme.surface } : null,
+            ]}
+          >
+            <Ionicons
+              name={option === 'grid' ? 'grid-outline' : 'list-outline'}
+              size={17}
+              color={active ? theme.text : theme.textMuted}
+            />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function CountdownsScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const { countdowns, loading, reload } = useCountdowns();
   const now = useNow();
   const [viewMode, setViewModeState] = useState<ViewMode>('grid');
@@ -30,56 +70,52 @@ export default function CountdownsScreen() {
     await setViewMode(next);
   }, []);
 
-  const sorted = useMemo(() => {
-    return [...countdowns].sort((a, b) => {
-      const valueOf = (c: Countdown) => {
-        const occurrence = resolveOccurrence(c.targetDate, c.recurrence, now, c.anchorDay);
-        return calculateCountdown({
-          occurrence,
-          now,
-          direction: c.direction,
-          unit: 'days',
-          anchorDay: c.anchorDay,
-        }).totalDays;
-      };
-      return valueOf(a) - valueOf(b);
+  const { sorted, nextDays } = useMemo(() => {
+    const rows = countdowns.map((countdown) => {
+      const occurrence = resolveOccurrence(
+        countdown.targetDate,
+        countdown.recurrence,
+        now,
+        countdown.anchorDay
+      );
+      const days = calculateCountdown({
+        occurrence,
+        now,
+        direction: 'down',
+        unit: 'days',
+        anchorDay: countdown.anchorDay,
+      }).totalDays;
+      return { countdown, days };
     });
+    rows.sort((a, b) => a.days - b.days);
+    const next = rows.find((row) => row.days >= 0 && row.countdown.direction === 'down');
+    return {
+      sorted: rows.map((row) => row.countdown) as Countdown[],
+      nextDays: next?.days ?? null,
+    };
   }, [countdowns, now]);
 
-  const headerActions = () => (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Switch between grid and list"
-      hitSlop={8}
-      onPress={() => void changeView(viewMode === 'grid' ? 'list' : 'grid')}
-      style={styles.headerButton}
-    >
-      <Ionicons
-        name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'}
-        size={22}
-        color={theme.text}
-      />
-    </Pressable>
-  );
+  const summary = useMemo(() => {
+    if (loading) return 'Reading your dates';
+    const count = countdowns.length;
+    if (count === 0) return 'Dates worth waiting for';
+    const base = `${count} countdown${count === 1 ? '' : 's'}`;
+    if (nextDays === null) return base;
+    if (nextDays <= 0) return `${base}. One lands today.`;
+    if (nextDays === 1) return `${base}. Next tomorrow.`;
+    return `${base}. Next in ${nextDays} days.`;
+  }, [countdowns.length, loading, nextDays]);
+
+  const gridItemWidth = (width - control.gutter * 2 - GRID_GAP) / 2;
 
   return (
     <View style={styles.container}>
-      <Tabs.Screen
-        options={{
-          title: 'Countdown',
-          headerRight: headerActions,
-          headerLeft: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Open settings"
-              hitSlop={8}
-              onPress={() => router.push('/settings')}
-              style={styles.headerButton}
-            >
-              <Ionicons name="menu" size={24} color={theme.text} />
-            </Pressable>
-          ),
-        }}
+      <Tabs.Screen options={{ headerShown: false }} />
+
+      <ScreenHeader
+        title="Countdown"
+        subtitle={summary}
+        actions={<ViewToggle mode={viewMode} onChange={(next) => void changeView(next)} />}
       />
 
       <FlatList
@@ -96,7 +132,9 @@ export default function CountdownsScreen() {
             <EmptyState
               theme={theme}
               title="No countdowns yet"
-              message="Tap + to add a birthday, a holiday, or anything you're looking forward to."
+              message="Add a birthday, a trip, or a deadline to get started."
+              actionLabel="Add your first countdown"
+              onAction={() => router.push('/countdown/new')}
             />
           )
         }
@@ -105,11 +143,12 @@ export default function CountdownsScreen() {
             countdown={item}
             now={now}
             layout={viewMode}
-            style={viewMode === 'grid' ? styles.gridItem : styles.listItem}
+            style={viewMode === 'grid' ? [styles.gridItem, { maxWidth: gridItemWidth }] : styles.listItem}
             onPress={() => {
               void Haptics.selectionAsync();
               router.push(`/countdown/${item.id}`);
             }}
+            onChanged={() => void reload()}
           />
         )}
       />
@@ -117,10 +156,16 @@ export default function CountdownsScreen() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Add countdown"
-        onPress={() => router.push('/countdown/new')}
-        style={[styles.fab, { backgroundColor: theme.accent }]}
+        onPress={() => {
+          void Haptics.selectionAsync();
+          router.push('/countdown/new');
+        }}
+        style={({ pressed }) => [
+          styles.fab,
+          { backgroundColor: theme.accent, opacity: pressed ? 0.85 : 1 },
+        ]}
       >
-        <Ionicons name="add" size={30} color={theme.accentText} />
+        <Ionicons name="add" size={28} color={theme.accentText} />
       </Pressable>
     </View>
   );
@@ -128,27 +173,44 @@ export default function CountdownsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  headerButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  gridItem: { flex: 1 },
-  listItem: { flex: 1 },
-  gridRow: { columnGap: spacing.md },
-  list: {
-    flexGrow: 1,
-    padding: spacing.md,
-    rowGap: spacing.md,
-    // Clears the floating action button.
-    paddingBottom: spacing.xl * 3,
+  toggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    padding: 3,
+    borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  fab: {
-    position: 'absolute',
-    right: spacing.lg,
-    bottom: spacing.lg,
-    width: 60,
-    height: 60,
+  toggleItem: {
+    width: 36,
+    height: 32,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 6,
+  },
+  gridItem: { flex: 1 },
+  listItem: { flex: 1 },
+  gridRow: { columnGap: GRID_GAP },
+  list: {
+    flexGrow: 1,
+    paddingHorizontal: control.gutter,
+    paddingTop: spacing.xs,
+    rowGap: GRID_GAP,
+    paddingBottom: 120,
+  },
+  fab: {
+    position: 'absolute',
+    right: control.gutter,
+    bottom: spacing.lg,
+    width: 58,
+    height: 58,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#000000',
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
   },
 });

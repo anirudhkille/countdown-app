@@ -34,11 +34,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const isDark = scheme !== 'light';
+  const systemDark = scheme !== 'light';
+  const isDark = themeId === 'dark' || (themeId === 'system' && systemDark);
 
   const value = useMemo<ThemeContextValue>(
     () => ({
-      theme: getTheme(themeId, isDark),
+      theme: getTheme(themeId, systemDark),
       isDark,
       themeId,
       fontKey,
@@ -52,7 +53,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         await setFontKey(key);
       },
     }),
-    [themeId, isDark, fontKey]
+    [themeId, isDark, systemDark, fontKey]
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
