@@ -2,7 +2,7 @@ import { isRunningInExpoGo } from 'expo';
 import { Platform } from 'react-native';
 import type * as ExpoNotifications from 'expo-notifications';
 import { listCountdowns } from '../../data/countdownRepo';
-import { resolveOccurrence } from '../../domain/recurrence';
+import { nextReminderAt } from '../../domain/reminder';
 import type { Countdown } from '../../domain/types';
 
 const CHANNEL_ID = 'countdown-reminders';
@@ -13,12 +13,6 @@ export function notificationsBlocked(): boolean {
   return isRunningInExpoGo() && Platform.OS === 'android';
 }
 
-/**
- * Resolving the module is not proof it works: the JS side can load while the native
- * side rejects, so every native call is wrapped and the first failure latches the
- * module off. Without this a single rejected promise escapes as an unhandled
- * rejection rather than degrading to "reminders unavailable".
- */
 function markUnavailable(): void {
   cached = null;
 }
@@ -84,18 +78,9 @@ export async function scheduleForCountdown(countdown: Countdown): Promise<void> 
   if (!Notifications) return;
 
   await cancelForCountdown(countdown.id);
-  if (countdown.remindAt === null) return;
-  if (countdown.archived) return;
 
-  const now = Date.now();
-  const occurrence = resolveOccurrence(
-    countdown.targetDate,
-    countdown.recurrence,
-    now,
-    countdown.anchorDay
-  );
-  const fireAt = countdown.remindAt + (occurrence - countdown.targetDate);
-  if (fireAt <= now) return;
+  const fireAt = nextReminderAt(countdown, Date.now());
+  if (fireAt === null) return;
 
   const granted = await ensurePermissions();
   if (!granted) return;
@@ -157,4 +142,19 @@ export function onNotificationResponse(
     const id = response.notification.request.content.data?.countdownId;
     if (typeof id === 'string') handler(id);
   });
+}
+
+export function lastNotificationCountdownId(): string | null {
+  const Notifications = getNotifications();
+  if (!Notifications) return null;
+  try {
+    const response = Notifications.getLastNotificationResponse();
+    const id = response?.notification.request.content.data?.countdownId;
+    if (typeof id !== 'string') return null;
+    Notifications.clearLastNotificationResponse();
+    return id;
+  } catch {
+    markUnavailable();
+    return null;
+  }
 }

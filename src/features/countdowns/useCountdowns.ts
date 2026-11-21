@@ -7,24 +7,26 @@ import type { Countdown } from '../../domain/types';
 export function useCountdowns() {
   const [countdowns, setCountdowns] = useState<Countdown[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    const rows = await listCountdowns();
-    setCountdowns(rows);
-    setLoading(false);
+    try {
+      const rows = await listCountdowns();
+      setCountdowns(rows);
+      setError(null);
+    } catch {
+      setError('Your countdowns could not be read.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // The editor creates, edits and deletes, then calls router.back(). That neither
-  // remounts this screen nor changes AppState, so without a focus reload the list
-  // keeps showing the data it read on mount.
   useFocusEffect(
     useCallback(() => {
       void reload();
     }, [reload])
   );
 
-  // Returning from the background is a separate case: a recurrence may have rolled
-  // over while the app was away, so the countdown values need recomputing too.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') void reload();
@@ -32,5 +34,5 @@ export function useCountdowns() {
     return () => sub.remove();
   }, [reload]);
 
-  return { countdowns, loading, reload };
+  return { countdowns, loading, error, reload };
 }

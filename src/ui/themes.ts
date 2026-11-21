@@ -4,7 +4,6 @@ export interface Theme {
   background: string;
   surface: string;
   surfaceAlt: string;
-  header: string;
   text: string;
   textMuted: string;
   textFaint: string;
@@ -21,7 +20,6 @@ export const DARK: Theme = {
   background: '#0F1419',
   surface: '#161C23',
   surfaceAlt: '#1E262F',
-  header: '#0F1419',
   text: '#F3F1EA',
   textMuted: '#9AA3AC',
   textFaint: '#6C7680',
@@ -38,7 +36,6 @@ export const LIGHT: Theme = {
   background: '#F4F2EC',
   surface: '#FFFFFF',
   surfaceAlt: '#EDEAE1',
-  header: '#F4F2EC',
   text: '#141A20',
   textMuted: '#5E6A74',
   textFaint: '#8A939B',
@@ -63,8 +60,4 @@ export function getTheme(id: string | null | undefined, isDark: boolean): Theme 
   if (id === 'light') return LIGHT;
   if (id === 'dark') return DARK;
   return isDark ? DARK : LIGHT;
-}
-
-export function themeLabel(id: string | null | undefined): string {
-  return THEME_OPTIONS.find((option) => option.id === id)?.label ?? 'System';
 }

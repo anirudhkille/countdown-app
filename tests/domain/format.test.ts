@@ -14,4 +14,9 @@ describe('formatUnitLabel', () => {
     expect(formatUnitLabel('days', 1, 'up')).toBe('day since');
     expect(formatUnitLabel('years', 3, 'up')).toBe('years since');
   });
+
+  it('uses the past tense for expired countdowns', () => {
+    expect(formatUnitLabel('days', 1, 'down', true)).toBe('day ago');
+    expect(formatUnitLabel('days', 13, 'down', true)).toBe('days ago');
+  });
 });

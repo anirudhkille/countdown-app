@@ -84,7 +84,8 @@ export default function SettingsScreen() {
   const [picker, setPicker] = React.useState<'theme' | 'font' | null>(null);
 
   const themeValue = THEME_OPTIONS.find((option) => option.id === themeId)?.label ?? 'System';
-  const fontValue = FONT_OPTIONS.find((option) => option.key === fontKey)?.label ?? 'System';
+  const activeFontKey = fontFamilyFor(fontKey) ?? 'System';
+  const fontValue = FONT_OPTIONS.find((option) => option.key === activeFontKey)?.label ?? 'System';
 
   return (
     <View style={styles.container}>
@@ -121,7 +122,7 @@ export default function SettingsScreen() {
       <OptionPicker
         visible={picker !== null}
         title={picker === 'font' ? 'Countdown font' : 'Theme'}
-        selected={picker === 'font' ? fontKey : themeId}
+        selected={picker === 'font' ? activeFontKey : themeId}
         options={
           picker === 'font'
             ? FONT_OPTIONS.map((option) => ({
@@ -138,6 +139,7 @@ export default function SettingsScreen() {
         onSelect={(next) => {
           if (picker === 'font') void setFontKey(next);
           else void setThemeId(next);
+          setPicker(null);
         }}
         onClose={() => setPicker(null)}
       />

@@ -65,7 +65,7 @@ export function ShareCard({
         <View style={styles.metaRow}>
           <Text numberOfLines={1} style={[typography.caption, { color: theme.textMuted, flex: 1 }]}>
             {formatCountdownValue(value.value)}{' '}
-            {formatUnitLabel(value.unit, value.value, countdown.direction)}
+            {formatUnitLabel(value.unit, value.value, countdown.direction, value.isPast)}
           </Text>
           <Text style={[typography.micro, { color: theme.textFaint }]}>Countdown</Text>
         </View>

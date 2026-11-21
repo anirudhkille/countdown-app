@@ -57,7 +57,7 @@ export default function CountdownsScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { countdowns, loading, reload } = useCountdowns();
+  const { countdowns, loading, error, reload } = useCountdowns();
   const now = useNow();
   const [viewMode, setViewModeState] = useState<ViewMode>('grid');
 
@@ -104,6 +104,7 @@ export default function CountdownsScreen() {
 
   const summary = useMemo(() => {
     if (loading) return 'Reading your dates';
+    if (error) return 'Your dates are out of reach';
     const count = countdowns.length;
     if (count === 0) return 'Dates worth waiting for';
     const base = `${count} countdown${count === 1 ? '' : 's'}`;
@@ -111,7 +112,7 @@ export default function CountdownsScreen() {
     if (nextDays <= 0) return `${base}. One lands today.`;
     if (nextDays === 1) return `${base}. Next tomorrow.`;
     return `${base}. Next in ${nextDays} days.`;
-  }, [countdowns.length, loading, nextDays]);
+  }, [countdowns.length, error, loading, nextDays]);
 
   const gridItemWidth = (width - control.gutter * 2 - GRID_GAP) / 2;
 
@@ -135,7 +136,15 @@ export default function CountdownsScreen() {
         onRefresh={() => void reload()}
         refreshing={loading}
         ListEmptyComponent={
-          loading ? null : (
+          loading ? null : error ? (
+            <EmptyState
+              theme={theme}
+              title="Your countdowns could not be read"
+              message="The local database did not answer. Try again."
+              actionLabel="Try again"
+              onAction={() => void reload()}
+            />
+          ) : (
             <EmptyState
               theme={theme}
               title="No countdowns yet"

@@ -21,12 +21,6 @@ function getCalendar(): typeof Calendar | null {
   return cached;
 }
 
-/**
- * Loading the module is not proof it works: in Expo Go the JS module resolves but the
- * first native call rejects, because the calendar native module is not bundled. The
- * first such failure latches `nativeUsable` to false so the UI can offer the
- * development-build message instead of a permission prompt that can never succeed.
- */
 export function isCalendarAvailable(): boolean {
   return getCalendar() !== null && nativeUsable;
 }

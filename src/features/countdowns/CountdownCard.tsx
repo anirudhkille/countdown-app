@@ -80,9 +80,9 @@ export function CountdownCard({
   const date = formatTargetDate(occurrence);
   const repeat = recurrenceLabel(countdown.recurrence);
   const accent = countdown.color ?? theme.accent;
-  const accessibilityLabel = `${title || date}, ${value.value} ${value.unit} ${
-    countdown.direction === 'down' ? 'left' : 'since'
-  }`;
+  const suffix =
+    countdown.direction === 'up' ? 'since' : value.isPast ? 'ago' : 'left';
+  const accessibilityLabel = `${title || date}, ${value.value} ${value.unit} ${suffix}`;
 
   async function confirmDelete() {
     Alert.alert('Delete countdown?', `"${title || date}" will be removed.`, [
@@ -119,29 +119,36 @@ export function CountdownCard({
   if (layout === 'list') {
     return (
       <>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={accessibilityLabel}
-          onPress={onPress}
-          style={style}
+        <View
+          style={[
+            style,
+            { borderBottomColor: theme.border, borderBottomWidth: StyleSheet.hairlineWidth },
+          ]}
         >
-          <View style={[styles.listRow, { borderBottomColor: theme.border }]}>
-            <ProgressRing
-              value={value}
-              direction={countdown.direction}
-              size={ringSize}
-              stroke={4}
-              color={countdown.color}
-            />
-            <View style={styles.listText}>
-              <Text numberOfLines={1} style={[typography.bodyStrong, { color: theme.text }]}>
-                {title || date}
-              </Text>
-              <Text numberOfLines={1} style={[typography.caption, { color: theme.textMuted }]}>
-                {title ? date : repeat ?? 'No title'}
-                {title && repeat ? `, ${repeat.toLowerCase()}` : ''}
-              </Text>
-            </View>
+          <View style={styles.listRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={accessibilityLabel}
+              onPress={onPress}
+              style={styles.listPress}
+            >
+              <ProgressRing
+                value={value}
+                direction={countdown.direction}
+                size={ringSize}
+                stroke={4}
+                color={countdown.color}
+              />
+              <View style={styles.listText}>
+                <Text numberOfLines={1} style={[typography.bodyStrong, { color: theme.text }]}>
+                  {title || date}
+                </Text>
+                <Text numberOfLines={1} style={[typography.caption, { color: theme.textMuted }]}>
+                  {title ? date : repeat ?? 'No title'}
+                  {title && repeat ? `, ${repeat.toLowerCase()}` : ''}
+                </Text>
+              </View>
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Options for ${title || date}`}
@@ -152,7 +159,7 @@ export function CountdownCard({
               <Ionicons name="ellipsis-horizontal" size={18} color={theme.textMuted} />
             </Pressable>
           </View>
-        </Pressable>
+        </View>
         {menu}
       </>
     );
@@ -160,50 +167,52 @@ export function CountdownCard({
 
   return (
     <>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        onPress={onPress}
-        style={style}
-      >
+      <View style={style}>
         <View style={[styles.tile, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <View style={styles.tileTop}>
-            <View style={styles.dateWrap}>
-              {countdown.color ? (
-                <View style={[styles.colorDot, { backgroundColor: accent }]} />
-              ) : null}
-              <Text numberOfLines={1} style={[typography.caption, { color: theme.textMuted }]}>
-                {date}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={accessibilityLabel}
+            onPress={onPress}
+            style={styles.tilePress}
+          >
+            <View style={styles.tileTop}>
+              <View style={styles.dateWrap}>
+                {countdown.color ? (
+                  <View style={[styles.colorDot, { backgroundColor: accent }]} />
+                ) : null}
+                <Text numberOfLines={1} style={[typography.caption, { color: theme.textMuted }]}>
+                  {date}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.tileDial}>
+              <ProgressRing
+                value={value}
+                direction={countdown.direction}
+                size={ringSize}
+                stroke={Math.max(5, Math.round(ringSize * 0.075))}
+                color={countdown.color}
+              />
+            </View>
+
+            <View style={styles.tileFoot}>
+              <Text numberOfLines={2} style={[typography.bodyStrong, { color: theme.text }]}>
+                {title}
               </Text>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Options for ${title || date}`}
-              hitSlop={12}
-              onPress={() => setMenuOpen(true)}
-              style={styles.menuButton}
-            >
-              <Ionicons name="ellipsis-horizontal" size={18} color={theme.textMuted} />
-            </Pressable>
-          </View>
-
-          <View style={styles.tileDial}>
-            <ProgressRing
-              value={value}
-              direction={countdown.direction}
-              size={ringSize}
-              stroke={Math.max(5, Math.round(ringSize * 0.075))}
-              color={countdown.color}
-            />
-          </View>
-
-          <View style={styles.tileFoot}>
-            <Text numberOfLines={2} style={[typography.bodyStrong, { color: theme.text }]}>
-              {title}
-            </Text>
-          </View>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Options for ${title || date}`}
+            hitSlop={12}
+            onPress={() => setMenuOpen(true)}
+            style={[styles.menuButton, styles.tileMenu]}
+          >
+            <Ionicons name="ellipsis-horizontal" size={18} color={theme.textMuted} />
+          </Pressable>
         </View>
-      </Pressable>
+      </View>
       {menu}
     </>
   );
@@ -222,16 +231,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     minHeight: 24,
   },
-  dateWrap: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
+  tilePress: { flex: 1 },
+  tileMenu: { position: 'absolute', top: 2, right: 2 },
+  dateWrap: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, paddingRight: 44 },
   colorDot: { width: 6, height: 6, borderRadius: 3 },
   tileDial: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.sm },
   tileFoot: { minHeight: 40, justifyContent: 'flex-end' },
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
     paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  listPress: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   listText: { flex: 1, gap: 3 },
   menuButton: {

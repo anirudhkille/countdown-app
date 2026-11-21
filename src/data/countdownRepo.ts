@@ -14,9 +14,9 @@ export function fromRow(r: CountdownRow): Countdown {
     notes: r.notes,
     targetDate: r.target_date,
     anchorDay: r.anchor_day,
-    recurrence: r.recurrence as Recurrence,
-    direction: r.direction as Direction,
-    unit: r.unit as Unit,
+    recurrence: asRecurrence(r.recurrence),
+    direction: asDirection(r.direction),
+    unit: asUnit(r.unit),
     showTime: r.show_time === 1,
     themeId: r.theme_id,
     color: r.color,
@@ -28,6 +28,20 @@ export function fromRow(r: CountdownRow): Countdown {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
+}
+
+function asRecurrence(value: string): Recurrence {
+  return value === 'weekly' || value === 'monthly' || value === 'yearly' ? value : 'none';
+}
+
+function asDirection(value: string): Direction {
+  return value === 'up' ? 'up' : 'down';
+}
+
+function asUnit(value: string): Unit {
+  return value === 'days' || value === 'weeks' || value === 'months' || value === 'years'
+    ? value
+    : 'auto';
 }
 
 export function toRow(c: Countdown): CountdownRow {
@@ -104,24 +118,30 @@ export async function updateCountdown(
   now: number
 ): Promise<void> {
   const db = await getDb();
-  const r = toRow({
-    ...draft,
-    id,
-    calendarEventId: draft.calendarEventId ?? null,
-    archived: false,
-    createdAt: now,
-    updatedAt: now,
-  });
-  await db.runAsync(
+  const result = await db.runAsync(
     `UPDATE countdowns SET
       title = ?, notes = ?, target_date = ?, anchor_day = ?, recurrence = ?,
       direction = ?, unit = ?, show_time = ?, theme_id = ?, color = ?,
       font_family = ?, emoji = ?, remind_at = ?, calendar_event_id = ?, updated_at = ?
     WHERE id = ?`,
-    r.title, r.notes, r.target_date, r.anchor_day, r.recurrence, r.direction, r.unit,
-    r.show_time, r.theme_id, r.color, r.font_family, r.emoji, r.remind_at,
-    r.calendar_event_id, r.updated_at, id
+    draft.title,
+    draft.notes,
+    draft.targetDate,
+    draft.anchorDay ?? null,
+    draft.recurrence,
+    draft.direction,
+    draft.unit,
+    draft.showTime ? 1 : 0,
+    draft.themeId,
+    draft.color,
+    draft.fontFamily,
+    draft.emoji,
+    draft.remindAt,
+    draft.calendarEventId ?? null,
+    now,
+    id
   );
+  if (result.changes === 0) throw new Error('Countdown not found');
 }
 
 export async function deleteCountdown(id: string): Promise<void> {
@@ -129,12 +149,11 @@ export async function deleteCountdown(id: string): Promise<void> {
   await db.runAsync('DELETE FROM countdowns WHERE id = ?', id);
 }
 
-export async function setArchived(id: string, archived: boolean): Promise<void> {
+export async function calendarEventExists(eventId: string): Promise<boolean> {
   const db = await getDb();
-  await db.runAsync(
-    'UPDATE countdowns SET archived = ?, updated_at = ? WHERE id = ?',
-    archived ? 1 : 0,
-    Date.now(),
-    id
+  const row = await db.getFirstAsync<{ found: number }>(
+    'SELECT 1 AS found FROM countdowns WHERE calendar_event_id = ? LIMIT 1',
+    eventId
   );
+  return row !== null;
 }

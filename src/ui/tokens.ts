@@ -4,7 +4,6 @@ export const radius = { sm: 10, md: 16, lg: 20, xl: 26, pill: 999 } as const;
 
 export const typography = {
   display: { fontSize: 34, lineHeight: 38, fontWeight: '700', letterSpacing: -1 },
-  hero: { fontSize: 64, lineHeight: 70, fontWeight: '700', letterSpacing: -2 },
   title: { fontSize: 20, lineHeight: 26, fontWeight: '600', letterSpacing: -0.3 },
   body: { fontSize: 15, lineHeight: 21, fontWeight: '400' },
   bodyStrong: { fontSize: 15, lineHeight: 21, fontWeight: '600' },

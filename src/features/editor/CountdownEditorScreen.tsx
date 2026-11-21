@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -25,9 +26,11 @@ import type { CountdownDraft, Direction, Recurrence, Unit } from '../../domain/t
 import { ProgressRing } from '../../ui/ProgressRing';
 import { FormGroup, FormInput, FormRow, FormSwitch } from '../../ui/FieldRow';
 import { OptionPicker } from '../../ui/OptionPicker';
+import { StackHeader } from '../../ui/StackHeader';
 import { control, radius, spacing, typography } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
 import { calculateCountdown } from '../../domain/countdown';
+import { resolveOccurrence } from '../../domain/recurrence';
 import { useNow } from '../countdowns/useNow';
 import { DateTimeField } from './DateTimeField';
 
@@ -88,28 +91,46 @@ export function CountdownEditorScreen() {
   const [color, setColor] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'missing'>(
+    isNew ? 'ready' : 'loading'
+  );
   const [picker, setPicker] = useState<Picker | null>(null);
   const [storedThemeId, setStoredThemeId] = useState<string>('system');
   const [storedFontFamily, setStoredFontFamily] = useState<string | null>(null);
 
   useEffect(() => {
     if (isNew) return;
-    void getCountdown(id).then((c) => {
-      if (!c) return;
-      setTitle(c.title);
-      setTarget(new Date(c.targetDate));
-      setShowTime(c.showTime);
-      setRecurrence(c.recurrence);
-      setDirection(c.direction);
-      setUnit(c.unit);
-      setColor(c.color);
-      setNotes(c.notes ?? '');
-      setStoredThemeId(c.themeId);
-      setStoredFontFamily(c.fontFamily);
-      if (c.remindAt === null) return;
-      const hours = Math.round((c.remindAt - c.targetDate) / 3_600_000);
-      setReminder(REMINDER_OPTIONS.find((o) => o.hours === -hours)?.value ?? 'none');
-    });
+    let cancelled = false;
+    void getCountdown(id)
+      .then((c) => {
+        if (cancelled) return;
+        if (!c) {
+          setStatus('missing');
+          return;
+        }
+        setTitle(c.title);
+        setTarget(new Date(c.targetDate));
+        setShowTime(c.showTime);
+        setRecurrence(c.recurrence);
+        setDirection(c.direction);
+        setUnit(c.unit);
+        setColor(c.color);
+        setNotes(c.notes ?? '');
+        setStoredThemeId(c.themeId);
+        setStoredFontFamily(c.fontFamily);
+        if (c.remindAt !== null) {
+          const hours = Math.round((c.remindAt - c.targetDate) / 3_600_000);
+          setReminder(REMINDER_OPTIONS.find((o) => o.hours === -hours)?.value ?? 'none');
+        }
+        setStatus('ready');
+      })
+      .catch(() => {
+        if (!cancelled) setStatus('missing');
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id, isNew]);
 
   const reminderHours = useMemo(
@@ -117,19 +138,27 @@ export function CountdownEditorScreen() {
     [reminder]
   );
 
-  const preview = useMemo(
-    () =>
-      calculateCountdown({
-        occurrence: target.getTime(),
-        now,
-        direction,
-        unit,
-      }),
-    [target, now, direction, unit]
-  );
+  const preview = useMemo(() => {
+    const anchorDay = recurrence === 'none' ? null : target.getDate();
+    const occurrence = resolveOccurrence(
+      target.getTime(),
+      recurrence,
+      now,
+      anchorDay
+    );
+    return calculateCountdown({
+      occurrence,
+      now,
+      direction,
+      unit,
+      anchorDay,
+    });
+  }, [target, now, direction, unit, recurrence]);
 
   async function save() {
+    if (saving || status !== 'ready') return;
     setSaving(true);
+    setSaveError(null);
     const savedAt = Date.now();
     const targetDate = target.getTime();
 
@@ -161,6 +190,8 @@ export function CountdownEditorScreen() {
       }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
+    } catch {
+      setSaveError('Your countdown could not be saved. Try again.');
     } finally {
       setSaving(false);
     }
@@ -182,11 +213,50 @@ export function CountdownEditorScreen() {
           ? 'Direction'
           : 'Reminder';
 
+  if (status === 'loading') {
+    return (
+      <View style={[styles.fill, { backgroundColor: theme.background }]}>
+        <StackHeader title="Countdown" />
+        <View style={styles.center}>
+          <ActivityIndicator color={theme.textMuted} />
+        </View>
+      </View>
+    );
+  }
+
+  if (status === 'missing') {
+    return (
+      <View style={[styles.fill, { backgroundColor: theme.background }]}>
+        <StackHeader title="Countdown" />
+        <View style={styles.center}>
+          <Text style={[typography.title, styles.missingTitle, { color: theme.text }]}>
+            Countdown not found
+          </Text>
+          <Text style={[typography.body, styles.missingBody, { color: theme.textMuted }]}>
+            It may have been deleted on this device.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+            style={({ pressed }) => [
+              styles.missingButton,
+              { borderColor: theme.border, opacity: pressed ? 0.6 : 1 },
+            ]}
+          >
+            <Text style={[typography.body, { color: theme.text }]}>Go back</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={[styles.fill, { backgroundColor: theme.background }]}>
+      <StackHeader title={isNew ? 'New countdown' : 'Edit countdown'} />
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView
         style={{ backgroundColor: theme.background }}
         contentContainerStyle={[
@@ -298,6 +368,12 @@ export function CountdownEditorScreen() {
           />
         </FormGroup>
 
+        {saveError ? (
+          <Text style={[typography.caption, styles.saveError, { color: theme.danger }]}>
+            {saveError}
+          </Text>
+        ) : null}
+
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={isNew ? 'Save countdown' : 'Save changes'}
@@ -343,14 +419,27 @@ export function CountdownEditorScreen() {
           if (picker === 'unit') setUnit(next as Unit);
           if (picker === 'direction') setDirection(next as Direction);
           if (picker === 'reminder') setReminder(next);
+          setPicker(null);
         }}
         onClose={() => setPicker(null)}
       />
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, gap: spacing.sm },
+  missingTitle: { textAlign: 'center' },
+  missingBody: { textAlign: 'center', maxWidth: 300 },
+  missingButton: {
+    marginTop: spacing.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.md,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.xl,
+  },
   container: { flex: 1 },
   content: {
     paddingHorizontal: control.gutter,
@@ -387,6 +476,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   defaultDot: { width: 10, height: 10, borderRadius: 5 },
+  saveError: { textAlign: 'center', marginTop: -spacing.sm },
   save: {
     borderRadius: radius.md,
     minHeight: 54,

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Crypto from 'expo-crypto';
-import { createCountdown } from '../../data/countdownRepo';
+import { calendarEventExists, createCountdown } from '../../data/countdownRepo';
 import { scheduleForCountdown } from '../notifications/notificationService';
 import { useNow } from '../countdowns/useNow';
 import { EmptyState } from '../../ui/EmptyState';
+import { StackHeader } from '../../ui/StackHeader';
 import { radius, spacing, typography } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
 import { DEFAULT_THEME_ID } from '../../ui/themes';
@@ -37,6 +38,7 @@ export function ImportScreen() {
   const [events, setEvents] = useState<ImportableEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [unavailable, setUnavailable] = useState(false);
+  const [importingId, setImportingId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,66 +80,81 @@ export function ImportScreen() {
   }, []);
 
   async function importEvent(event: ImportableEvent) {
-    const date = new Date(event.date);
-    const created = await createCountdown(
-      {
-        title: event.title,
-        notes: event.notes,
-        targetDate: event.date,
-        anchorDay: date.getDate(),
-        recurrence: event.allDay ? 'yearly' : 'none',
-        direction: 'down',
-        unit: 'auto',
-        showTime: !event.allDay,
-        themeId: DEFAULT_THEME_ID,
-        color: null,
-        fontFamily: null,
-        emoji: null,
-        remindAt: null,
-        calendarEventId: event.id,
-      },
-      Crypto.randomUUID(),
-      now
-    );
+    if (importingId) return;
+    setImportingId(event.id);
+    try {
+      if (await calendarEventExists(event.id)) {
+        Alert.alert('Already imported', 'This event is already one of your countdowns.');
+        return;
+      }
+      const created = await createCountdown(
+        {
+          title: event.title,
+          notes: event.notes,
+          targetDate: event.date,
+          anchorDay: null,
+          recurrence: 'none',
+          direction: 'down',
+          unit: 'auto',
+          showTime: !event.allDay,
+          themeId: DEFAULT_THEME_ID,
+          color: null,
+          fontFamily: null,
+          emoji: null,
+          remindAt: null,
+          calendarEventId: event.id,
+        },
+        Crypto.randomUUID(),
+        now
+      );
 
-    await scheduleForCountdown(created);
-    router.back();
+      await scheduleForCountdown(created);
+      router.back();
+    } catch {
+      Alert.alert('Could not import event', 'The event was not added. Try again.');
+    } finally {
+      setImportingId(null);
+    }
   }
 
   if (unavailable) {
     return (
-      <View style={[styles.unavailable, { backgroundColor: theme.background }]}>
-        <View style={[styles.unavailableIcon, { backgroundColor: theme.surfaceAlt }]}>
-          <Ionicons name="calendar-outline" size={30} color={theme.textMuted} />
-        </View>
-        <Text style={[typography.title, styles.unavailableTitle, { color: theme.text }]}>
-          Calendar import needs a development build
-        </Text>
-        <Text style={[typography.body, styles.unavailableBody, { color: theme.textMuted }]}>
-          Expo Go does not include calendar access. Install a development build with the command
-          below, then try again.
-        </Text>
-        <View style={[styles.code, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[typography.caption, { color: theme.text, fontFamily: 'monospace' }]}>
-            expo run:android
+      <View style={[styles.fill, { backgroundColor: theme.background }]}>
+        <StackHeader title="Import" />
+        <View style={styles.unavailable}>
+          <View style={[styles.unavailableIcon, { backgroundColor: theme.surfaceAlt }]}>
+            <Ionicons name="calendar-outline" size={30} color={theme.textMuted} />
+          </View>
+          <Text style={[typography.title, styles.unavailableTitle, { color: theme.text }]}>
+            Calendar import needs a development build
           </Text>
+          <Text style={[typography.body, styles.unavailableBody, { color: theme.textMuted }]}>
+            Expo Go does not include calendar access. Install a development build with the command
+            below, then try again.
+          </Text>
+          <View style={[styles.code, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[typography.caption, { color: theme.text, fontFamily: 'monospace' }]}>
+              expo run:android
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.back()}
+            style={({ pressed }) => [
+              styles.backButton,
+              { borderColor: theme.border, opacity: pressed ? 0.6 : 1 },
+            ]}
+          >
+            <Text style={[typography.body, { color: theme.text }]}>Go back</Text>
+          </Pressable>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.back()}
-          style={({ pressed }) => [
-            styles.backButton,
-            { borderColor: theme.border, opacity: pressed ? 0.6 : 1 },
-          ]}
-        >
-          <Text style={[typography.body, { color: theme.text }]}>Go back</Text>
-        </Pressable>
       </View>
     );
   }
 
   return (
     <View style={[styles.fill, { backgroundColor: theme.background }]}>
+      <StackHeader title="Import" />
       {loading ? (
         <View style={styles.loading}>
           <Text style={[typography.body, { color: theme.textMuted }]}>Reading your calendar…</Text>
@@ -166,13 +183,14 @@ export function ImportScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Import ${item.title}`}
+              disabled={importingId !== null}
               onPress={() => void importEvent(item)}
               style={({ pressed }) => [
                 styles.row,
                 {
                   backgroundColor: theme.surface,
                   borderColor: theme.border,
-                  opacity: pressed ? 0.7 : 1,
+                  opacity: importingId !== null && importingId !== item.id ? 0.4 : pressed ? 0.7 : 1,
                 },
               ]}
             >
@@ -191,7 +209,11 @@ export function ImportScreen() {
                   {item.allDay ? ', all day' : ''}
                 </Text>
               </View>
-              <Ionicons name="add-circle-outline" size={24} color={theme.accentInk} />
+              {importingId === item.id ? (
+                <ActivityIndicator size="small" color={theme.accentInk} />
+              ) : (
+                <Ionicons name="add-circle-outline" size={24} color={theme.accentInk} />
+              )}
             </Pressable>
           )}
         />

@@ -21,7 +21,7 @@ export function buildShareText(
   const repeat = countdown.recurrence === 'none' ? null : RECURRENCE_TEXT[countdown.recurrence];
   return [
     title,
-    `${formatCountdownValue(value.value)} ${formatUnitLabel(value.unit, value.value, countdown.direction)}`,
+    `${formatCountdownValue(value.value)} ${formatUnitLabel(value.unit, value.value, countdown.direction, value.isPast)}`,
     repeat ? `${repeat}, ${date}` : date,
   ].join('\n');
 }

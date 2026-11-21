@@ -35,7 +35,10 @@ export function ProgressRing({
   const progress = direction === 'down' ? Math.max(0, Math.min(1, value.totalDays / DRAIN_WINDOW_DAYS)) : 1;
   const dash = circumference * progress;
 
-  const unit = formatUnitLabel(value.unit, value.value, direction).replace(/\s(left|since)$/, '');
+  const unit = formatUnitLabel(value.unit, value.value, direction, value.isPast).replace(
+    /\s(left|since)$/,
+    ''
+  );
   const ink = color ?? theme.accent;
 
   return (
@@ -72,7 +75,7 @@ export function ProgressRing({
           style={[
             styles.number,
             { color: theme.text, fontSize: size * 0.3, lineHeight: size * 0.34 },
-            fontFamily ? { fontFamily } : null,
+            fontFamily ? { fontFamily } : styles.systemWeight,
           ]}
         >
           {formatCountdownValue(value.value)}
@@ -104,6 +107,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
-  number: { fontWeight: '700', letterSpacing: -1.2, fontVariant: ['tabular-nums'] },
+  number: { letterSpacing: -1.2, fontVariant: ['tabular-nums'] },
+  systemWeight: { fontWeight: '700' },
   unit: { fontWeight: '500', marginTop: -1, letterSpacing: 0.2 },
 });
