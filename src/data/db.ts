@@ -12,10 +12,7 @@ export interface CountdownRow {
   direction: string;
   unit: string;
   show_time: number;
-  theme_id: string;
   color: string | null;
-  font_family: string | null;
-  emoji: string | null;
   remind_at: number | null;
   calendar_event_id: string | null;
   archived: number;

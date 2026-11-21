@@ -18,10 +18,7 @@ export function fromRow(r: CountdownRow): Countdown {
     direction: asDirection(r.direction),
     unit: asUnit(r.unit),
     showTime: r.show_time === 1,
-    themeId: r.theme_id,
     color: r.color,
-    fontFamily: r.font_family,
-    emoji: r.emoji,
     remindAt: r.remind_at,
     calendarEventId: r.calendar_event_id,
     archived: r.archived === 1,
@@ -55,10 +52,7 @@ export function toRow(c: Countdown): CountdownRow {
     direction: c.direction,
     unit: c.unit,
     show_time: c.showTime ? 1 : 0,
-    theme_id: c.themeId,
     color: c.color,
-    font_family: c.fontFamily,
-    emoji: c.emoji,
     remind_at: c.remindAt,
     calendar_event_id: c.calendarEventId,
     archived: c.archived ? 1 : 0,
@@ -102,11 +96,11 @@ export async function createCountdown(
   await db.runAsync(
     `INSERT INTO countdowns (
       id, title, notes, target_date, anchor_day, recurrence, direction, unit,
-      show_time, theme_id, color, font_family, emoji, remind_at, calendar_event_id,
+      show_time, color, remind_at, calendar_event_id,
       archived, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     r.id, r.title, r.notes, r.target_date, r.anchor_day, r.recurrence, r.direction, r.unit,
-    r.show_time, r.theme_id, r.color, r.font_family, r.emoji, r.remind_at, r.calendar_event_id,
+    r.show_time, r.color, r.remind_at, r.calendar_event_id,
     r.archived, r.created_at, r.updated_at
   );
   return record;
@@ -121,8 +115,8 @@ export async function updateCountdown(
   const result = await db.runAsync(
     `UPDATE countdowns SET
       title = ?, notes = ?, target_date = ?, anchor_day = ?, recurrence = ?,
-      direction = ?, unit = ?, show_time = ?, theme_id = ?, color = ?,
-      font_family = ?, emoji = ?, remind_at = ?, calendar_event_id = ?, updated_at = ?
+      direction = ?, unit = ?, show_time = ?, color = ?,
+      remind_at = ?, calendar_event_id = ?, updated_at = ?
     WHERE id = ?`,
     draft.title,
     draft.notes,
@@ -132,10 +126,7 @@ export async function updateCountdown(
     draft.direction,
     draft.unit,
     draft.showTime ? 1 : 0,
-    draft.themeId,
     draft.color,
-    draft.fontFamily,
-    draft.emoji,
     draft.remindAt,
     draft.calendarEventId ?? null,
     now,

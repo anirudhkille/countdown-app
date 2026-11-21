@@ -96,8 +96,6 @@ export function CountdownEditorScreen() {
     isNew ? 'ready' : 'loading'
   );
   const [picker, setPicker] = useState<Picker | null>(null);
-  const [storedThemeId, setStoredThemeId] = useState<string>('system');
-  const [storedFontFamily, setStoredFontFamily] = useState<string | null>(null);
 
   useEffect(() => {
     if (isNew) return;
@@ -117,8 +115,6 @@ export function CountdownEditorScreen() {
         setUnit(c.unit);
         setColor(c.color);
         setNotes(c.notes ?? '');
-        setStoredThemeId(c.themeId);
-        setStoredFontFamily(c.fontFamily);
         if (c.remindAt !== null) {
           const hours = Math.round((c.remindAt - c.targetDate) / 3_600_000);
           setReminder(REMINDER_OPTIONS.find((o) => o.hours === -hours)?.value ?? 'none');
@@ -171,10 +167,7 @@ export function CountdownEditorScreen() {
       direction,
       unit,
       showTime,
-      themeId: storedThemeId,
       color,
-      fontFamily: storedFontFamily,
-      emoji: null,
       remindAt: reminderHours === null ? null : targetDate - reminderHours * 3_600_000,
     };
 

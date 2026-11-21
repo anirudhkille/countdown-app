@@ -16,10 +16,7 @@ export interface Countdown {
   direction: Direction;
   unit: Unit;
   showTime: boolean;
-  themeId: string;
   color: string | null;
-  fontFamily: string | null;
-  emoji: string | null;
   remindAt: number | null;
   calendarEventId: string | null;
   archived: boolean;
@@ -44,4 +41,3 @@ export interface CountdownValue {
 }
 
 export type ThemeId = string;
-export type FontKey = string;

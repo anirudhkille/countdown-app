@@ -10,7 +10,6 @@ import { EmptyState } from '../../ui/EmptyState';
 import { StackHeader } from '../../ui/StackHeader';
 import { radius, spacing, typography } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
-import { DEFAULT_THEME_ID } from '../../ui/themes';
 import {
   hasCalendarPermission,
   isCalendarAvailable,
@@ -97,10 +96,7 @@ export function ImportScreen() {
           direction: 'down',
           unit: 'auto',
           showTime: !event.allDay,
-          themeId: DEFAULT_THEME_ID,
           color: null,
-          fontFamily: null,
-          emoji: null,
           remindAt: null,
           calendarEventId: event.id,
         },
