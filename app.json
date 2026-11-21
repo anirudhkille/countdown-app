@@ -11,8 +11,12 @@
       "package": "com.anirudhkille.countdown",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundColor": "#0B0B0F"
-      }
+        "backgroundColor": "#0F1419"
+      },
+      "permissions": [
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
+      ]
     },
     "ios": {
       "bundleIdentifier": "com.anirudhkille.countdown",
@@ -23,7 +27,7 @@
       [
         "expo-notifications",
         {
-          "color": "#0B0B0F"
+          "color": "#D9B44A"
         }
       ],
       [
@@ -38,12 +42,27 @@
         {
           "image": "./assets/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#0B0B0F"
+          "backgroundColor": "#0F1419"
         }
-      ]
+      ],
+      "expo-sharing",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d189d058-644a-41e1-9707-572fcd232310"
+      }
+    },
+    "owner": "anirudhkille",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d189d058-644a-41e1-9707-572fcd232310"
     }
   }
 }
