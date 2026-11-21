@@ -78,17 +78,24 @@ export default function CountdownsScreen() {
         now,
         countdown.anchorDay
       );
-      const days = calculateCountdown({
+      const result = calculateCountdown({
         occurrence,
         now,
-        direction: 'down',
+        direction: countdown.direction,
         unit: 'days',
         anchorDay: countdown.anchorDay,
-      }).totalDays;
-      return { countdown, days };
+      });
+      return {
+        countdown,
+        days: result.totalDays,
+        stale: countdown.direction === 'down' && result.isPast,
+      };
     });
-    rows.sort((a, b) => a.days - b.days);
-    const next = rows.find((row) => row.days >= 0 && row.countdown.direction === 'down');
+    rows.sort((a, b) => {
+      if (a.stale !== b.stale) return a.stale ? 1 : -1;
+      return a.days - b.days;
+    });
+    const next = rows.find((row) => !row.stale && row.countdown.direction === 'down');
     return {
       sorted: rows.map((row) => row.countdown) as Countdown[],
       nextDays: next?.days ?? null,
