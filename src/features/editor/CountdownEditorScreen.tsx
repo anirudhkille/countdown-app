@@ -30,6 +30,7 @@ import { StackHeader } from '../../ui/StackHeader';
 import { control, radius, spacing, typography } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
 import { calculateCountdown } from '../../domain/countdown';
+import { remainingFraction } from '../../domain/progress';
 import { resolveOccurrence } from '../../domain/recurrence';
 import { useNow } from '../countdowns/useNow';
 import { DateTimeField } from './DateTimeField';
@@ -96,6 +97,7 @@ export function CountdownEditorScreen() {
     isNew ? 'ready' : 'loading'
   );
   const [picker, setPicker] = useState<Picker | null>(null);
+  const [createdAt, setCreatedAt] = useState(0);
 
   useEffect(() => {
     if (isNew) return;
@@ -115,6 +117,7 @@ export function CountdownEditorScreen() {
         setUnit(c.unit);
         setColor(c.color);
         setNotes(c.notes ?? '');
+        setCreatedAt(c.createdAt);
         if (c.remindAt !== null) {
           const hours = Math.round((c.remindAt - c.targetDate) / 3_600_000);
           setReminder(REMINDER_OPTIONS.find((o) => o.hours === -hours)?.value ?? 'none');
@@ -134,22 +137,29 @@ export function CountdownEditorScreen() {
     [reminder]
   );
 
-  const preview = useMemo(() => {
-    const anchorDay = recurrence === 'none' ? null : target.getDate();
-    const occurrence = resolveOccurrence(
-      target.getTime(),
-      recurrence,
-      now,
-      anchorDay
-    );
-    return calculateCountdown({
-      occurrence,
-      now,
-      direction,
-      unit,
-      anchorDay,
-    });
-  }, [target, now, direction, unit, recurrence]);
+  const anchorDay = recurrence === 'none' ? null : target.getDate();
+  const occurrence = useMemo(
+    () => resolveOccurrence(target.getTime(), recurrence, now, anchorDay),
+    [target, recurrence, now, anchorDay]
+  );
+
+  const preview = useMemo(
+    () =>
+      calculateCountdown({
+        occurrence,
+        now,
+        direction,
+        unit,
+        anchorDay,
+      }),
+    [occurrence, now, direction, unit, anchorDay]
+  );
+
+  const remaining = remainingFraction(
+    { createdAt: createdAt || now, recurrence, anchorDay, direction },
+    occurrence,
+    now
+  );
 
   async function save() {
     if (saving || status !== 'ready') return;
@@ -271,6 +281,7 @@ export function CountdownEditorScreen() {
             size={176}
             stroke={9}
             color={color}
+            remaining={remaining}
           />
           <Text style={[typography.caption, { color: theme.textMuted }]}>
             {dateText}

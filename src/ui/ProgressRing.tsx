@@ -16,6 +16,7 @@ export function ProgressRing({
   stroke = DEFAULT_STROKE,
   color,
   showLabel = true,
+  remaining,
 }: {
   value: CountdownValue;
   direction: Direction;
@@ -23,6 +24,7 @@ export function ProgressRing({
   stroke?: number;
   color?: string | null;
   showLabel?: boolean;
+  remaining?: number;
 }) {
   const theme = useTheme();
   const fontFamily = useFontFamily();
@@ -32,7 +34,10 @@ export function ProgressRing({
   const radius = center - 5.5 - stroke / 2;
   const circumference = 2 * Math.PI * radius;
 
-  const progress = direction === 'down' ? Math.max(0, Math.min(1, value.totalDays / DRAIN_WINDOW_DAYS)) : 1;
+  const progress =
+    direction === 'down'
+      ? Math.max(0, Math.min(1, remaining ?? value.totalDays / DRAIN_WINDOW_DAYS))
+      : 1;
   const dash = circumference * progress;
 
   const unit = formatUnitLabel(value.unit, value.value, direction, value.isPast).replace(

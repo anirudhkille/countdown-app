@@ -7,6 +7,7 @@ import { ProgressRing } from '../../ui/ProgressRing';
 import { control, radius, spacing, typography } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
 import { calculateCountdown } from '../../domain/countdown';
+import { remainingFraction } from '../../domain/progress';
 import { resolveOccurrence } from '../../domain/recurrence';
 import { deleteCountdown } from '../../data/countdownRepo';
 import { cancelForCountdown } from '../notifications/notificationService';
@@ -80,6 +81,10 @@ export function CountdownCard({
   const date = formatTargetDate(occurrence);
   const repeat = recurrenceLabel(countdown.recurrence);
   const accent = countdown.color ?? theme.accent;
+  const remaining = useMemo(
+    () => remainingFraction(countdown, occurrence, now),
+    [countdown, occurrence, now]
+  );
   const suffix =
     countdown.direction === 'up' ? 'since' : value.isPast ? 'ago' : 'left';
   const accessibilityLabel = `${title || date}, ${value.value} ${value.unit} ${suffix}`;
@@ -138,6 +143,7 @@ export function CountdownCard({
                 size={ringSize}
                 stroke={4}
                 color={countdown.color}
+                remaining={remaining}
               />
               <View style={styles.listText}>
                 <Text numberOfLines={1} style={[typography.bodyStrong, { color: theme.text }]}>
@@ -193,6 +199,7 @@ export function CountdownCard({
                 size={ringSize}
                 stroke={Math.max(5, Math.round(ringSize * 0.075))}
                 color={countdown.color}
+                remaining={remaining}
               />
             </View>
 

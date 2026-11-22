@@ -4,6 +4,7 @@ import { ProgressRing } from '../../ui/ProgressRing';
 import { useTheme } from '../../ui/ThemeProvider';
 import { radius, spacing, typography } from '../../ui/tokens';
 import { formatCountdownValue, formatUnitLabel } from '../../domain/format';
+import { remainingFraction } from '../../domain/progress';
 import type { Countdown, CountdownValue } from '../../domain/types';
 
 export function ShareCard({
@@ -11,14 +12,17 @@ export function ShareCard({
   value,
   occurrence,
   size,
+  now,
 }: {
   countdown: Countdown;
   value: CountdownValue;
   occurrence: number;
   size: number;
+  now: number;
 }) {
   const theme = useTheme();
   const title = countdown.title.trim();
+  const remaining = remainingFraction(countdown, occurrence, now);
 
   return (
     <View
@@ -50,6 +54,7 @@ export function ShareCard({
           size={Math.round(size * 0.46)}
           stroke={Math.round(size * 0.025)}
           color={countdown.color}
+          remaining={remaining}
         />
       </View>
 

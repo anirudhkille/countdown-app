@@ -161,6 +161,7 @@ export function ShareScreen() {
               value={resolved.value}
               occurrence={resolved.occurrence}
               size={cardSize}
+              now={now}
             />
           </View>
         </View>
