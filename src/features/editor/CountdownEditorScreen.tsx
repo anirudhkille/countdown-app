@@ -30,6 +30,7 @@ import { StackHeader } from '../../ui/StackHeader';
 import { control, radius, spacing, typography } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
 import { calculateCountdown } from '../../domain/countdown';
+import { formatPreciseRemaining } from '../../domain/format';
 import { remainingFraction } from '../../domain/progress';
 import { resolveOccurrence } from '../../domain/recurrence';
 import { useNow } from '../countdowns/useNow';
@@ -160,6 +161,8 @@ export function CountdownEditorScreen() {
     occurrence,
     now
   );
+  const precise =
+    direction === 'down' ? formatPreciseRemaining(occurrence, now) : null;
 
   async function save() {
     if (saving || status !== 'ready') return;
@@ -282,6 +285,7 @@ export function CountdownEditorScreen() {
             stroke={9}
             color={color}
             remaining={remaining}
+            precise={precise}
           />
           <Text style={[typography.caption, { color: theme.textMuted }]}>
             {dateText}

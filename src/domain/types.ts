@@ -19,6 +19,7 @@ export interface Countdown {
   color: string | null;
   remindAt: number | null;
   calendarEventId: string | null;
+  pinned: boolean;
   archived: boolean;
   createdAt: number;
   updatedAt: number;
@@ -26,7 +27,7 @@ export interface Countdown {
 
 export type CountdownDraft = Omit<
   Countdown,
-  'id' | 'createdAt' | 'updatedAt' | 'archived' | 'calendarEventId'
+  'id' | 'createdAt' | 'updatedAt' | 'archived' | 'pinned' | 'calendarEventId'
 > & {
   id?: string;
   calendarEventId?: string | null;

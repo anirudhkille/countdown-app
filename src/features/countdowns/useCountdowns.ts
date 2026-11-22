@@ -4,14 +4,14 @@ import { useFocusEffect } from 'expo-router';
 import { listCountdowns } from '../../data/countdownRepo';
 import type { Countdown } from '../../domain/types';
 
-export function useCountdowns() {
+export function useCountdowns(includeArchived = false) {
   const [countdowns, setCountdowns] = useState<Countdown[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     try {
-      const rows = await listCountdowns();
+      const rows = await listCountdowns(includeArchived);
       setCountdowns(rows);
       setError(null);
     } catch {
@@ -19,7 +19,7 @@ export function useCountdowns() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [includeArchived]);
 
   useFocusEffect(
     useCallback(() => {

@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 
-export const DATABASE_VERSION = 2;
+export const DATABASE_VERSION = 3;
 
 export interface CountdownRow {
   id: string;
@@ -15,6 +15,7 @@ export interface CountdownRow {
   color: string | null;
   remind_at: number | null;
   calendar_event_id: string | null;
+  pinned: number;
   archived: number;
   created_at: number;
   updated_at: number;
@@ -72,6 +73,15 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
         await db.execAsync('ALTER TABLE countdowns ADD COLUMN anchor_day INTEGER;');
       }
       version = 2;
+    }
+
+    if (version === 2) {
+      if (!(await hasColumn(db, 'countdowns', 'pinned'))) {
+        await db.execAsync(
+          'ALTER TABLE countdowns ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;'
+        );
+      }
+      version = 3;
     }
 
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);

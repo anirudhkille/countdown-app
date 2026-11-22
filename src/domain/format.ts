@@ -28,3 +28,14 @@ export function formatUnitLabel(
   if (direction === 'down' && isPast) return `${word} ago`;
   return direction === 'down' ? `${word} left` : `${word} since`;
 }
+
+export function formatPreciseRemaining(occurrence: number, now: number): string | null {
+  const remaining = occurrence - now;
+  if (remaining <= 0 || remaining >= 86_400_000) return null;
+  const minutes = Math.floor(remaining / 60_000);
+  if (minutes < 1) return 'under a minute';
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest}m`;
+  return `${hours}h ${rest}m`;
+}

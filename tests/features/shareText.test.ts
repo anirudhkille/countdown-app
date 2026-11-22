@@ -23,6 +23,7 @@ function countdown(overrides: Partial<Countdown> = {}): Countdown {
     color: null,
     remindAt: null,
     calendarEventId: null,
+    pinned: false,
     archived: false,
     createdAt: 0,
     updatedAt: 0,

@@ -7,10 +7,16 @@ import { ProgressRing } from '../../ui/ProgressRing';
 import { control, radius, spacing, typography } from '../../ui/tokens';
 import { useTheme } from '../../ui/ThemeProvider';
 import { calculateCountdown } from '../../domain/countdown';
+import { formatPreciseRemaining } from '../../domain/format';
 import { remainingFraction } from '../../domain/progress';
 import { resolveOccurrence } from '../../domain/recurrence';
-import { deleteCountdown } from '../../data/countdownRepo';
-import { cancelForCountdown } from '../notifications/notificationService';
+import {
+  deleteCountdown,
+  getCountdown,
+  setArchived,
+  setPinned,
+} from '../../data/countdownRepo';
+import { cancelForCountdown, scheduleForCountdown } from '../notifications/notificationService';
 import type { Countdown, Recurrence } from '../../domain/types';
 
 const GRID_GAP = 12;
@@ -39,6 +45,7 @@ export function CountdownCard({
   now,
   onPress,
   onChanged,
+  onDeleted,
   style,
   layout = 'grid',
 }: {
@@ -46,6 +53,7 @@ export function CountdownCard({
   now: number;
   onPress: () => void;
   onChanged?: () => void;
+  onDeleted?: (countdown: Countdown) => void;
   style?: StyleProp<ViewStyle>;
   layout?: 'grid' | 'list';
 }) {
@@ -87,7 +95,31 @@ export function CountdownCard({
   );
   const suffix =
     countdown.direction === 'up' ? 'since' : value.isPast ? 'ago' : 'left';
-  const accessibilityLabel = `${title || date}, ${value.value} ${value.unit} ${suffix}`;
+  const precise = useMemo(
+    () =>
+      countdown.direction === 'down' ? formatPreciseRemaining(occurrence, now) : null,
+    [countdown.direction, occurrence, now]
+  );
+  const accessibilityLabel = precise
+    ? `${title || date}, ${precise} left`
+    : `${title || date}, ${value.value} ${value.unit} ${suffix}`;
+
+  async function togglePin() {
+    await setPinned(countdown.id, !countdown.pinned, Date.now());
+    onChanged?.();
+  }
+
+  async function toggleArchive() {
+    const archived = !countdown.archived;
+    await setArchived(countdown.id, archived, Date.now());
+    if (archived) {
+      await cancelForCountdown(countdown.id);
+    } else {
+      const restored = await getCountdown(countdown.id);
+      if (restored) await scheduleForCountdown(restored);
+    }
+    onChanged?.();
+  }
 
   async function confirmDelete() {
     Alert.alert('Delete countdown?', `"${title || date}" will be removed.`, [
@@ -98,7 +130,8 @@ export function CountdownCard({
         onPress: async () => {
           await cancelForCountdown(countdown.id);
           await deleteCountdown(countdown.id);
-          onChanged?.();
+          if (onDeleted) onDeleted(countdown);
+          else onChanged?.();
         },
       },
     ]);
@@ -115,6 +148,16 @@ export function CountdownCard({
           label: 'Share',
           icon: 'share-social-outline',
           onPress: () => router.push(`/share/${countdown.id}`),
+        },
+        {
+          label: countdown.pinned ? 'Unpin' : 'Pin to top',
+          icon: countdown.pinned ? 'pin' : 'pin-outline',
+          onPress: () => void togglePin(),
+        },
+        {
+          label: countdown.archived ? 'Restore from archive' : 'Archive',
+          icon: countdown.archived ? 'arrow-up-circle-outline' : 'archive-outline',
+          onPress: () => void toggleArchive(),
         },
         { label: 'Delete', icon: 'trash-outline', destructive: true, onPress: () => void confirmDelete() },
       ]}
@@ -144,11 +187,20 @@ export function CountdownCard({
                 stroke={4}
                 color={countdown.color}
                 remaining={remaining}
+                precise={precise}
               />
               <View style={styles.listText}>
-                <Text numberOfLines={1} style={[typography.bodyStrong, { color: theme.text }]}>
-                  {title || date}
-                </Text>
+                <View style={styles.titleRow}>
+                  {countdown.pinned ? (
+                    <Ionicons name="pin" size={12} color={theme.accentInk} />
+                  ) : null}
+                  <Text
+                    numberOfLines={1}
+                    style={[typography.bodyStrong, styles.titleText, { color: theme.text }]}
+                  >
+                    {title || date}
+                  </Text>
+                </View>
                 <Text numberOfLines={1} style={[typography.caption, { color: theme.textMuted }]}>
                   {title ? date : repeat ?? 'No title'}
                   {title && repeat ? `, ${repeat.toLowerCase()}` : ''}
@@ -183,6 +235,9 @@ export function CountdownCard({
           >
             <View style={styles.tileTop}>
               <View style={styles.dateWrap}>
+                {countdown.pinned ? (
+                  <Ionicons name="pin" size={11} color={theme.accentInk} />
+                ) : null}
                 {countdown.color ? (
                   <View style={[styles.colorDot, { backgroundColor: accent }]} />
                 ) : null}
@@ -200,6 +255,7 @@ export function CountdownCard({
                 stroke={Math.max(5, Math.round(ringSize * 0.075))}
                 color={countdown.color}
                 remaining={remaining}
+                precise={precise}
               />
             </View>
 
@@ -256,6 +312,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   listText: { flex: 1, gap: 3 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  titleText: { flex: 1 },
   menuButton: {
     width: control.tap,
     height: control.tap,

@@ -1,8 +1,15 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Constants from 'expo-constants';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
+import {
+  applyBackup,
+  exportBackup,
+  pickBackup,
+  type RestoreMode,
+} from '../../features/backup/backupService';
+import { reconcileAll } from '../../features/notifications/notificationService';
 import { OptionPicker } from '../../ui/OptionPicker';
 import { ScreenHeader } from '../../ui/ScreenHeader';
 import { FONT_OPTIONS, fontFamilyFor } from '../../ui/fonts';
@@ -46,14 +53,16 @@ function Row({
   label,
   value,
   onPress,
+  disabled,
 }: {
   label: string;
   value?: string;
   onPress?: () => void;
+  disabled?: boolean;
 }) {
   const { theme } = useThemeControls();
   const content = (
-    <View style={styles.rowInner}>
+    <View style={[styles.rowInner, disabled ? styles.disabled : null]}>
       <Text style={[typography.body, { color: theme.text, flex: 1 }]}>{label}</Text>
       {value ? (
         <Text numberOfLines={1} style={[typography.label, { color: theme.textMuted }]}>
@@ -64,7 +73,7 @@ function Row({
     </View>
   );
 
-  if (!onPress) return content;
+  if (!onPress || disabled) return content;
 
   return (
     <Pressable
@@ -78,10 +87,69 @@ function Row({
   );
 }
 
+function chooseRestoreMode(): Promise<RestoreMode | null> {
+  return new Promise((resolve) => {
+    Alert.alert(
+      'Restore backup',
+      'Merge keeps the countdowns already on this device. Replace removes them first.',
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(null) },
+        { text: 'Merge', onPress: () => resolve('merge') },
+        { text: 'Replace', style: 'destructive', onPress: () => resolve('replace') },
+      ],
+      { cancelable: true, onDismiss: () => resolve(null) }
+    );
+  });
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Something went wrong.';
+}
+
 export default function SettingsScreen() {
   const { theme, themeId, fontKey, setThemeId, setFontKey } = useThemeControls();
   const router = useRouter();
   const [picker, setPicker] = React.useState<'theme' | 'font' | null>(null);
+  const [busy, setBusy] = React.useState<'export' | 'restore' | null>(null);
+
+  async function shareBackup() {
+    if (busy) return;
+    setBusy('export');
+    try {
+      const count = await exportBackup(Date.now());
+      Alert.alert(
+        'Backup ready',
+        `${count} countdown${count === 1 ? '' : 's'} shared as a JSON file.`
+      );
+    } catch (error) {
+      Alert.alert('Could not export backup', errorMessage(error));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function restoreBackup() {
+    if (busy) return;
+    setBusy('restore');
+    try {
+      const parsed = await pickBackup();
+      if (!parsed) return;
+      const mode = await chooseRestoreMode();
+      if (!mode) return;
+      const { imported, skipped } = await applyBackup(parsed.countdowns, mode);
+      await reconcileAll();
+      const skippedText = skipped > 0 ? ` ${skipped} already existed.` : '';
+      const malformedText = parsed.malformed > 0 ? ` ${parsed.malformed} entr${parsed.malformed === 1 ? 'y was' : 'ies were'} unreadable.` : '';
+      Alert.alert(
+        'Backup restored',
+        `${imported} countdown${imported === 1 ? '' : 's'} imported.${skippedText}${malformedText}`
+      );
+    } catch (error) {
+      Alert.alert('Could not restore backup', errorMessage(error));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   const themeValue = THEME_OPTIONS.find((option) => option.id === themeId)?.label ?? 'System';
   const activeFontKey = fontFamilyFor(fontKey) ?? 'System';
@@ -105,6 +173,20 @@ export default function SettingsScreen() {
         <Section label="Data">
           <Group>
             <Row label="Import from calendar" onPress={() => router.push('/import')} />
+          </Group>
+          <Group>
+            <Row
+              label="Export backup"
+              value={busy === 'export' ? 'Preparing…' : undefined}
+              onPress={() => void shareBackup()}
+              disabled={busy !== null}
+            />
+            <Row
+              label="Restore backup"
+              value={busy === 'restore' ? 'Restoring…' : undefined}
+              onPress={() => void restoreBackup()}
+              disabled={busy !== null}
+            />
           </Group>
         </Section>
 
@@ -169,6 +251,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
   },
+  disabled: { opacity: 0.5 },
   footnote: {
     marginTop: spacing.lg,
     marginHorizontal: spacing.xs,

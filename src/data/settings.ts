@@ -25,3 +25,8 @@ export const setActiveThemeId = (id: ThemeId) => setSetting('activeThemeId', id)
 
 export const getFontKey = () => getSetting<string>('fontKey', 'System');
 export const setFontKey = (key: string) => setSetting('fontKey', key);
+
+export type SortKey = 'next' | 'newest' | 'name';
+
+export const getSortKey = () => getSetting<SortKey>('sortKey', 'next');
+export const setSortKey = (key: SortKey) => setSetting('sortKey', key);

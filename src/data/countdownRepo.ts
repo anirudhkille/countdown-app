@@ -21,6 +21,7 @@ export function fromRow(r: CountdownRow): Countdown {
     color: r.color,
     remindAt: r.remind_at,
     calendarEventId: r.calendar_event_id,
+    pinned: r.pinned === 1,
     archived: r.archived === 1,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -55,18 +56,25 @@ export function toRow(c: Countdown): CountdownRow {
     color: c.color,
     remind_at: c.remindAt,
     calendar_event_id: c.calendarEventId,
+    pinned: c.pinned ? 1 : 0,
     archived: c.archived ? 1 : 0,
     created_at: c.createdAt,
     updated_at: c.updatedAt,
   };
 }
 
-export async function listCountdowns(): Promise<Countdown[]> {
+export async function listCountdowns(includeArchived = false): Promise<Countdown[]> {
   const db = await getDb();
   const rows = await db.getAllAsync<CountdownRow>(
-    'SELECT * FROM countdowns WHERE archived = 0'
+    includeArchived
+      ? 'SELECT * FROM countdowns'
+      : 'SELECT * FROM countdowns WHERE archived = 0'
   );
   return rows.map(fromRow);
+}
+
+export async function listAllCountdowns(): Promise<Countdown[]> {
+  return listCountdowns(true);
 }
 
 export async function getCountdown(id: string): Promise<Countdown | null> {
@@ -78,6 +86,21 @@ export async function getCountdown(id: string): Promise<Countdown | null> {
   return row ? fromRow(row) : null;
 }
 
+async function insertRecord(record: Countdown): Promise<void> {
+  const db = await getDb();
+  const r = toRow(record);
+  await db.runAsync(
+    `INSERT INTO countdowns (
+      id, title, notes, target_date, anchor_day, recurrence, direction, unit,
+      show_time, color, remind_at, calendar_event_id, pinned,
+      archived, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    r.id, r.title, r.notes, r.target_date, r.anchor_day, r.recurrence, r.direction, r.unit,
+    r.show_time, r.color, r.remind_at, r.calendar_event_id, r.pinned,
+    r.archived, r.created_at, r.updated_at
+  );
+}
+
 export async function createCountdown(
   draft: CountdownDraft,
   id: string,
@@ -87,23 +110,17 @@ export async function createCountdown(
     ...draft,
     id,
     calendarEventId: draft.calendarEventId ?? null,
+    pinned: false,
     archived: false,
     createdAt: now,
     updatedAt: now,
   };
-  const db = await getDb();
-  const r = toRow(record);
-  await db.runAsync(
-    `INSERT INTO countdowns (
-      id, title, notes, target_date, anchor_day, recurrence, direction, unit,
-      show_time, color, remind_at, calendar_event_id,
-      archived, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    r.id, r.title, r.notes, r.target_date, r.anchor_day, r.recurrence, r.direction, r.unit,
-    r.show_time, r.color, r.remind_at, r.calendar_event_id,
-    r.archived, r.created_at, r.updated_at
-  );
+  await insertRecord(record);
   return record;
+}
+
+export async function insertCountdown(record: Countdown): Promise<void> {
+  await insertRecord(record);
 }
 
 export async function updateCountdown(
@@ -138,6 +155,38 @@ export async function updateCountdown(
 export async function deleteCountdown(id: string): Promise<void> {
   const db = await getDb();
   await db.runAsync('DELETE FROM countdowns WHERE id = ?', id);
+}
+
+export async function deleteAllCountdowns(): Promise<void> {
+  const db = await getDb();
+  await db.runAsync('DELETE FROM countdowns');
+}
+
+export async function setPinned(id: string, pinned: boolean, now: number): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    'UPDATE countdowns SET pinned = ?, updated_at = ? WHERE id = ?',
+    pinned ? 1 : 0,
+    now,
+    id
+  );
+}
+
+export async function setArchived(id: string, archived: boolean, now: number): Promise<void> {
+  const db = await getDb();
+  if (archived) {
+    await db.runAsync(
+      'UPDATE countdowns SET archived = 1, pinned = 0, updated_at = ? WHERE id = ?',
+      now,
+      id
+    );
+    return;
+  }
+  await db.runAsync(
+    'UPDATE countdowns SET archived = 0, updated_at = ? WHERE id = ?',
+    now,
+    id
+  );
 }
 
 export async function calendarEventExists(eventId: string): Promise<boolean> {

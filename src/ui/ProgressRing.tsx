@@ -17,6 +17,7 @@ export function ProgressRing({
   color,
   showLabel = true,
   remaining,
+  precise,
 }: {
   value: CountdownValue;
   direction: Direction;
@@ -25,6 +26,7 @@ export function ProgressRing({
   color?: string | null;
   showLabel?: boolean;
   remaining?: number;
+  precise?: string | null;
 }) {
   const theme = useTheme();
   const fontFamily = useFontFamily();
@@ -79,13 +81,17 @@ export function ProgressRing({
           minimumFontScale={0.45}
           style={[
             styles.number,
-            { color: theme.text, fontSize: size * 0.3, lineHeight: size * 0.34 },
+            {
+              color: theme.text,
+              fontSize: precise ? size * 0.23 : size * 0.3,
+              lineHeight: precise ? size * 0.28 : size * 0.34,
+            },
             fontFamily ? { fontFamily } : styles.systemWeight,
           ]}
         >
-          {formatCountdownValue(value.value)}
+          {precise ?? formatCountdownValue(value.value)}
         </Text>
-        {showLabel ? (
+        {showLabel && !precise ? (
           <Text
             numberOfLines={1}
             style={[

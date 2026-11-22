@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { ProgressRing } from '../../ui/ProgressRing';
 import { useTheme } from '../../ui/ThemeProvider';
 import { radius, spacing, typography } from '../../ui/tokens';
-import { formatCountdownValue, formatUnitLabel } from '../../domain/format';
+import { formatCountdownValue, formatPreciseRemaining, formatUnitLabel } from '../../domain/format';
 import { remainingFraction } from '../../domain/progress';
 import type { Countdown, CountdownValue } from '../../domain/types';
 
@@ -23,6 +23,8 @@ export function ShareCard({
   const theme = useTheme();
   const title = countdown.title.trim();
   const remaining = remainingFraction(countdown, occurrence, now);
+  const precise =
+    countdown.direction === 'down' ? formatPreciseRemaining(occurrence, now) : null;
 
   return (
     <View
@@ -55,6 +57,7 @@ export function ShareCard({
           stroke={Math.round(size * 0.025)}
           color={countdown.color}
           remaining={remaining}
+          precise={precise}
         />
       </View>
 
@@ -69,8 +72,13 @@ export function ShareCard({
         </Text>
         <View style={styles.metaRow}>
           <Text numberOfLines={1} style={[typography.caption, { color: theme.textMuted, flex: 1 }]}>
-            {formatCountdownValue(value.value)}{' '}
-            {formatUnitLabel(value.unit, value.value, countdown.direction, value.isPast)}
+            {precise ??
+              `${formatCountdownValue(value.value)} ${formatUnitLabel(
+                value.unit,
+                value.value,
+                countdown.direction,
+                value.isPast
+              )}`}
           </Text>
           <Text style={[typography.micro, { color: theme.textFaint }]}>Countdown</Text>
         </View>
