@@ -97,7 +97,7 @@ export function ImportScreen() {
           unit: 'auto',
           showTime: !event.allDay,
           color: null,
-          remindAt: null,
+          reminders: [],
           calendarEventId: event.id,
         },
         Crypto.randomUUID(),

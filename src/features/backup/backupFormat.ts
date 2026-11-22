@@ -1,8 +1,9 @@
 import type { Countdown, Direction, Recurrence, Unit } from '../../domain/types';
+import { legacyReminders, normalizeReminders } from '../../domain/reminder';
 
 export interface BackupFile {
   app: 'countdown';
-  version: 1;
+  version: 2;
   exportedAt: number;
   countdowns: Countdown[];
 }
@@ -41,6 +42,7 @@ function parseCountdown(value: unknown): Countdown | null {
   const createdAt = number(value.createdAt) ?? targetDate;
   const updatedAt = number(value.updatedAt) ?? createdAt;
   const anchorDay = number(value.anchorDay);
+  const reminders = normalizeReminders(value.reminders);
 
   return {
     id,
@@ -57,7 +59,7 @@ function parseCountdown(value: unknown): Countdown | null {
     unit: UNITS.includes(value.unit as Unit) ? (value.unit as Unit) : 'auto',
     showTime: value.showTime === true,
     color: optionalText(value.color),
-    remindAt: number(value.remindAt),
+    reminders: reminders.length > 0 ? reminders : legacyReminders(number(value.remindAt), targetDate),
     calendarEventId: optionalText(value.calendarEventId),
     pinned: value.pinned === true,
     archived: value.archived === true,
@@ -69,7 +71,7 @@ function parseCountdown(value: unknown): Countdown | null {
 export function buildBackup(countdowns: Countdown[], now: number): string {
   const payload: BackupFile = {
     app: 'countdown',
-    version: 1,
+    version: 2,
     exportedAt: now,
     countdowns,
   };

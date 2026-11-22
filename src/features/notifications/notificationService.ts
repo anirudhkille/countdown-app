@@ -2,12 +2,13 @@ import { isRunningInExpoGo } from 'expo';
 import { Platform } from 'react-native';
 import type * as ExpoNotifications from 'expo-notifications';
 import { listCountdowns } from '../../data/countdownRepo';
-import { nextReminderAt } from '../../domain/reminder';
+import { nextReminderFire } from '../../domain/reminder';
 import type { Countdown } from '../../domain/types';
 
 const CHANNEL_ID = 'countdown-reminders';
 
-const idFor = (countdownId: string) => `countdown:${countdownId}`;
+const idFor = (countdownId: string, reminderId: string) =>
+  `countdown:${countdownId}:${reminderId}`;
 
 export function notificationsBlocked(): boolean {
   return isRunningInExpoGo() && Platform.OS === 'android';
@@ -79,29 +80,42 @@ export async function scheduleForCountdown(countdown: Countdown): Promise<void> 
 
   await cancelForCountdown(countdown.id);
 
-  const fireAt = nextReminderAt(countdown, Date.now());
-  if (fireAt === null) return;
+  if (countdown.archived || countdown.reminders.length === 0) return;
+
+  const now = Date.now();
+  const planned = countdown.reminders
+    .map((reminder) => ({
+      reminder,
+      fireAt: nextReminderFire(countdown, reminder, now),
+    }))
+    .filter(
+      (entry): entry is { reminder: Countdown['reminders'][number]; fireAt: number } =>
+        entry.fireAt !== null
+    );
+  if (planned.length === 0) return;
 
   const granted = await ensurePermissions();
   if (!granted) return;
 
   try {
-    await Notifications.scheduleNotificationAsync({
-      identifier: idFor(countdown.id),
-      content: {
-        title: countdown.title,
-        body:
-          countdown.recurrence === 'none'
-            ? 'Your countdown is today.'
-            : 'Your countdown is coming up.',
-        data: { countdownId: countdown.id },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: new Date(fireAt),
-        channelId: CHANNEL_ID,
-      },
-    });
+    for (const { reminder, fireAt } of planned) {
+      await Notifications.scheduleNotificationAsync({
+        identifier: idFor(countdown.id, reminder.id),
+        content: {
+          title: countdown.title,
+          body:
+            countdown.recurrence === 'none'
+              ? 'Your countdown is today.'
+              : 'Your countdown is coming up.',
+          data: { countdownId: countdown.id },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: new Date(fireAt),
+          channelId: CHANNEL_ID,
+        },
+      });
+    }
   } catch {
     markUnavailable();
   }
@@ -111,7 +125,16 @@ export async function cancelForCountdown(id: string): Promise<void> {
   const Notifications = getNotifications();
   if (!Notifications) return;
   try {
-    await Notifications.cancelScheduledNotificationAsync(idFor(id));
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const matches = scheduled.filter(
+      (entry) => entry.content.data?.countdownId === id
+    );
+    await Promise.all(
+      matches.map((entry) =>
+        Notifications.cancelScheduledNotificationAsync(entry.identifier)
+      )
+    );
+    await Notifications.cancelScheduledNotificationAsync(`countdown:${id}`);
   } catch {
     markUnavailable();
   }

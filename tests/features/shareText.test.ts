@@ -21,7 +21,7 @@ function countdown(overrides: Partial<Countdown> = {}): Countdown {
     unit: 'days',
     showTime: false,
     color: null,
-    remindAt: null,
+    reminders: [],
     calendarEventId: null,
     pinned: false,
     archived: false,

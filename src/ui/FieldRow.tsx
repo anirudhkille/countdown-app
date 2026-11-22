@@ -43,10 +43,12 @@ export function FormRow({
   label,
   value,
   onPress,
+  onRemove,
 }: {
   label: string;
   value?: string;
   onPress?: () => void;
+  onRemove?: () => void;
 }) {
   const theme = useTheme();
   const content = (
@@ -57,7 +59,19 @@ export function FormRow({
           {value}
         </Text>
       ) : null}
-      {onPress ? <Ionicons name="chevron-forward" size={16} color={theme.textFaint} /> : null}
+      {onRemove ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${label}`}
+          hitSlop={8}
+          onPress={onRemove}
+          style={({ pressed }) => (pressed ? { opacity: 0.5 } : null)}
+        >
+          <Ionicons name="close" size={18} color={theme.textMuted} />
+        </Pressable>
+      ) : onPress ? (
+        <Ionicons name="chevron-forward" size={16} color={theme.textFaint} />
+      ) : null}
     </View>
   );
 

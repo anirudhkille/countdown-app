@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import * as Crypto from 'expo-crypto';
 import { useRouter } from 'expo-router';
 import { CardMenu } from '../../ui/CardMenu';
 import { ProgressRing } from '../../ui/ProgressRing';
@@ -13,6 +14,7 @@ import { resolveOccurrence } from '../../domain/recurrence';
 import {
   deleteCountdown,
   getCountdown,
+  insertCountdown,
   setArchived,
   setPinned,
 } from '../../data/countdownRepo';
@@ -121,6 +123,25 @@ export function CountdownCard({
     onChanged?.();
   }
 
+  async function duplicate() {
+    const record = await getCountdown(countdown.id);
+    if (!record) return;
+    const timestamp = Date.now();
+    const copy: Countdown = {
+      ...record,
+      id: Crypto.randomUUID(),
+      title: record.title.trim() ? `${record.title} copy` : '',
+      calendarEventId: null,
+      pinned: false,
+      archived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    await insertCountdown(copy);
+    await scheduleForCountdown(copy);
+    onChanged?.();
+  }
+
   async function confirmDelete() {
     Alert.alert('Delete countdown?', `"${title || date}" will be removed.`, [
       { text: 'Cancel', style: 'cancel' },
@@ -149,6 +170,7 @@ export function CountdownCard({
           icon: 'share-social-outline',
           onPress: () => router.push(`/share/${countdown.id}`),
         },
+        { label: 'Duplicate', icon: 'copy-outline', onPress: () => void duplicate() },
         {
           label: countdown.pinned ? 'Unpin' : 'Pin to top',
           icon: countdown.pinned ? 'pin' : 'pin-outline',

@@ -12,6 +12,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import * as Haptics from 'expo-haptics';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   createCountdown,
@@ -22,7 +23,8 @@ import {
   cancelForCountdown,
   scheduleForCountdown,
 } from '../notifications/notificationService';
-import type { CountdownDraft, Direction, Recurrence, Unit } from '../../domain/types';
+import type { CountdownDraft, Direction, Recurrence, Reminder, Unit } from '../../domain/types';
+import { REMINDER_PRESETS, reminderLabel } from '../../domain/reminder';
 import { ProgressRing } from '../../ui/ProgressRing';
 import { FormGroup, FormInput, FormRow, FormSwitch } from '../../ui/FieldRow';
 import { OptionPicker } from '../../ui/OptionPicker';
@@ -35,13 +37,6 @@ import { remainingFraction } from '../../domain/progress';
 import { resolveOccurrence } from '../../domain/recurrence';
 import { useNow } from '../countdowns/useNow';
 import { DateTimeField } from './DateTimeField';
-
-const REMINDER_OPTIONS: { value: string; label: string; hours: number | null }[] = [
-  { value: 'none', label: 'Off', hours: null },
-  { value: '1h', label: '1 hour before', hours: 1 },
-  { value: '1d', label: '1 day before', hours: 24 },
-  { value: '1w', label: '1 week before', hours: 168 },
-];
 
 const RECURRENCE_OPTIONS: { value: Recurrence; label: string }[] = [
   { value: 'none', label: 'Does not repeat' },
@@ -73,7 +68,13 @@ const SWATCHES: (string | null)[] = [
   '#8C9299',
 ];
 
-type Picker = 'recurrence' | 'unit' | 'direction' | 'reminder';
+function sameReminder(a: Reminder, b: Reminder): boolean {
+  if (a.kind === 'offset' && b.kind === 'offset') return a.minutes === b.minutes;
+  if (a.kind === 'time' && b.kind === 'time') return a.hour === b.hour && a.minute === b.minute;
+  return false;
+}
+
+type Picker = 'recurrence' | 'unit' | 'direction' | 'reminders';
 
 export function CountdownEditorScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -89,7 +90,13 @@ export function CountdownEditorScreen() {
   const [recurrence, setRecurrence] = useState<Recurrence>('none');
   const [direction, setDirection] = useState<Direction>('down');
   const [unit, setUnit] = useState<Unit>('auto');
-  const [reminder, setReminder] = useState<string>('none');
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [timePickerOpen, setTimePickerOpen] = useState(false);
+  const [customTime, setCustomTime] = useState(() => {
+    const date = new Date();
+    date.setHours(9, 0, 0, 0);
+    return date;
+  });
   const [color, setColor] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -119,10 +126,7 @@ export function CountdownEditorScreen() {
         setColor(c.color);
         setNotes(c.notes ?? '');
         setCreatedAt(c.createdAt);
-        if (c.remindAt !== null) {
-          const hours = Math.round((c.remindAt - c.targetDate) / 3_600_000);
-          setReminder(REMINDER_OPTIONS.find((o) => o.hours === -hours)?.value ?? 'none');
-        }
+        setReminders(c.reminders);
         setStatus('ready');
       })
       .catch(() => {
@@ -132,11 +136,6 @@ export function CountdownEditorScreen() {
       cancelled = true;
     };
   }, [id, isNew]);
-
-  const reminderHours = useMemo(
-    () => REMINDER_OPTIONS.find((o) => o.value === reminder)?.hours ?? null,
-    [reminder]
-  );
 
   const anchorDay = recurrence === 'none' ? null : target.getDate();
   const occurrence = useMemo(
@@ -181,7 +180,7 @@ export function CountdownEditorScreen() {
       unit,
       showTime,
       color,
-      remindAt: reminderHours === null ? null : targetDate - reminderHours * 3_600_000,
+      reminders,
     };
 
     try {
@@ -217,7 +216,7 @@ export function CountdownEditorScreen() {
         ? 'Count in'
         : picker === 'direction'
           ? 'Direction'
-          : 'Reminder';
+          : 'Reminders';
 
   if (status === 'loading') {
     return (
@@ -324,11 +323,50 @@ export function CountdownEditorScreen() {
             value={DIRECTION_OPTIONS.find((o) => o.value === direction)?.label}
             onPress={() => setPicker('direction')}
           />
-          <FormRow
-            label="Reminder"
-            value={REMINDER_OPTIONS.find((o) => o.value === reminder)?.label}
-            onPress={() => setPicker('reminder')}
-          />
+        </FormGroup>
+
+        <FormGroup title="Reminders">
+          {reminders.length === 0 ? (
+            <Text style={[typography.body, styles.emptyReminder, { color: theme.textMuted }]}>
+              No reminders yet
+            </Text>
+          ) : null}
+          {reminders.map((reminder) => (
+            <FormRow
+              key={reminder.id}
+              label={reminderLabel(reminder)}
+              onRemove={() =>
+                setReminders((prev) => prev.filter((item) => item.id !== reminder.id))
+              }
+            />
+          ))}
+          <FormRow label="Add reminder" onPress={() => setPicker('reminders')} />
+          {timePickerOpen ? (
+            <View>
+              <DateTimePicker
+                value={customTime}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, date) => {
+                  if (Platform.OS === 'android') setTimePickerOpen(false);
+                  if (event.type !== 'set' || !date) return;
+                  setCustomTime(date);
+                  const next: Reminder = {
+                    id: Crypto.randomUUID(),
+                    kind: 'time',
+                    hour: date.getHours(),
+                    minute: date.getMinutes(),
+                  };
+                  setReminders((prev) =>
+                    prev.some((item) => sameReminder(item, next)) ? prev : [...prev, next]
+                  );
+                }}
+              />
+              {Platform.OS === 'ios' ? (
+                <FormRow label="Done" onPress={() => setTimePickerOpen(false)} />
+              ) : null}
+            </View>
+          ) : null}
         </FormGroup>
 
         <FormGroup title="Color">
@@ -404,15 +442,23 @@ export function CountdownEditorScreen() {
       <OptionPicker
         visible={picker !== null}
         title={pickerTitle}
-        options={(
+        options={
           picker === 'recurrence'
             ? RECURRENCE_OPTIONS
             : picker === 'unit'
               ? UNIT_OPTIONS
               : picker === 'direction'
                 ? DIRECTION_OPTIONS
-                : REMINDER_OPTIONS
-        ) as { value: string; label: string }[]}
+                : picker === 'reminders'
+                  ? [
+                      ...REMINDER_PRESETS.map((item) => ({
+                        value: item.id,
+                        label: reminderLabel(item),
+                      })),
+                      { value: 'custom', label: 'Choose a time…' },
+                    ]
+                  : []
+        }
         selected={
           picker === 'recurrence'
             ? recurrence
@@ -420,13 +466,26 @@ export function CountdownEditorScreen() {
               ? unit
               : picker === 'direction'
                 ? direction
-                : reminder
+                : ''
         }
         onSelect={(next) => {
           if (picker === 'recurrence') setRecurrence(next as Recurrence);
           if (picker === 'unit') setUnit(next as Unit);
           if (picker === 'direction') setDirection(next as Direction);
-          if (picker === 'reminder') setReminder(next);
+          if (picker === 'reminders') {
+            if (next === 'custom') {
+              setTimePickerOpen(true);
+            } else {
+              const preset = REMINDER_PRESETS.find((item) => item.id === next);
+              if (preset) {
+                setReminders((prev) =>
+                  prev.some((item) => sameReminder(item, preset))
+                    ? prev
+                    : [...prev, { ...preset, id: Crypto.randomUUID() }]
+                );
+              }
+            }
+          }
           setPicker(null);
         }}
         onClose={() => setPicker(null)}
@@ -485,6 +544,10 @@ const styles = StyleSheet.create({
   },
   defaultDot: { width: 10, height: 10, borderRadius: 5 },
   saveError: { textAlign: 'center', marginTop: -spacing.sm },
+  emptyReminder: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+  },
   save: {
     borderRadius: radius.md,
     minHeight: 54,

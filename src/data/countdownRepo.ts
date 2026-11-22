@@ -1,4 +1,5 @@
 import { getDb, type CountdownRow } from './db';
+import { parseReminders } from '../domain/reminder';
 import type {
   Countdown,
   CountdownDraft,
@@ -19,7 +20,7 @@ export function fromRow(r: CountdownRow): Countdown {
     unit: asUnit(r.unit),
     showTime: r.show_time === 1,
     color: r.color,
-    remindAt: r.remind_at,
+    reminders: parseReminders(r.reminders, r.remind_at, r.target_date),
     calendarEventId: r.calendar_event_id,
     pinned: r.pinned === 1,
     archived: r.archived === 1,
@@ -54,7 +55,8 @@ export function toRow(c: Countdown): CountdownRow {
     unit: c.unit,
     show_time: c.showTime ? 1 : 0,
     color: c.color,
-    remind_at: c.remindAt,
+    reminders: JSON.stringify(c.reminders),
+    remind_at: null,
     calendar_event_id: c.calendarEventId,
     pinned: c.pinned ? 1 : 0,
     archived: c.archived ? 1 : 0,
@@ -92,11 +94,11 @@ async function insertRecord(record: Countdown): Promise<void> {
   await db.runAsync(
     `INSERT INTO countdowns (
       id, title, notes, target_date, anchor_day, recurrence, direction, unit,
-      show_time, color, remind_at, calendar_event_id, pinned,
+      show_time, color, reminders, remind_at, calendar_event_id, pinned,
       archived, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     r.id, r.title, r.notes, r.target_date, r.anchor_day, r.recurrence, r.direction, r.unit,
-    r.show_time, r.color, r.remind_at, r.calendar_event_id, r.pinned,
+    r.show_time, r.color, r.reminders, r.remind_at, r.calendar_event_id, r.pinned,
     r.archived, r.created_at, r.updated_at
   );
 }
@@ -133,7 +135,7 @@ export async function updateCountdown(
     `UPDATE countdowns SET
       title = ?, notes = ?, target_date = ?, anchor_day = ?, recurrence = ?,
       direction = ?, unit = ?, show_time = ?, color = ?,
-      remind_at = ?, calendar_event_id = ?, updated_at = ?
+      reminders = ?, remind_at = NULL, calendar_event_id = ?, updated_at = ?
     WHERE id = ?`,
     draft.title,
     draft.notes,
@@ -144,7 +146,7 @@ export async function updateCountdown(
     draft.unit,
     draft.showTime ? 1 : 0,
     draft.color,
-    draft.remindAt,
+    JSON.stringify(draft.reminders),
     draft.calendarEventId ?? null,
     now,
     id

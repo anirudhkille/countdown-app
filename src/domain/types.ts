@@ -6,6 +6,21 @@ export type Unit = 'auto' | 'days' | 'weeks' | 'months' | 'years';
 
 export type ResolvedUnit = Exclude<Unit, 'auto'>;
 
+export interface OffsetReminder {
+  id: string;
+  kind: 'offset';
+  minutes: number;
+}
+
+export interface TimeReminder {
+  id: string;
+  kind: 'time';
+  hour: number;
+  minute: number;
+}
+
+export type Reminder = OffsetReminder | TimeReminder;
+
 export interface Countdown {
   id: string;
   title: string;
@@ -17,7 +32,7 @@ export interface Countdown {
   unit: Unit;
   showTime: boolean;
   color: string | null;
-  remindAt: number | null;
+  reminders: Reminder[];
   calendarEventId: string | null;
   pinned: boolean;
   archived: boolean;

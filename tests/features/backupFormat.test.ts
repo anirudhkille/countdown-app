@@ -1,5 +1,13 @@
 import { buildBackup, parseBackup } from '../../src/features/backup/backupFormat';
-import type { Countdown } from '../../src/domain/types';
+import type { Countdown, Reminder } from '../../src/domain/types';
+
+const offset = (minutes: number, id = 'r'): Reminder => ({ id, kind: 'offset', minutes });
+const time = (hour: number, minute: number, id = 't'): Reminder => ({
+  id,
+  kind: 'time',
+  hour,
+  minute,
+});
 
 function countdown(overrides: Partial<Countdown> = {}): Countdown {
   return {
@@ -13,7 +21,7 @@ function countdown(overrides: Partial<Countdown> = {}): Countdown {
     unit: 'auto',
     showTime: true,
     color: '#D9B44A',
-    remindAt: null,
+    reminders: [],
     calendarEventId: null,
     pinned: false,
     archived: false,
@@ -31,17 +39,38 @@ describe('buildBackup', () => {
       countdowns: Countdown[];
     };
     expect(parsed.app).toBe('countdown');
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(2);
     expect(parsed.countdowns).toHaveLength(1);
   });
 });
 
 describe('parseBackup', () => {
   it('round-trips every field', () => {
-    const original = countdown({ pinned: true, archived: true });
+    const original = countdown({
+      pinned: true,
+      archived: true,
+      reminders: [offset(1440, 'day'), time(9, 0, 'morning')],
+    });
     const parsed = parseBackup(buildBackup([original], 123));
     expect(parsed.malformed).toBe(0);
     expect(parsed.countdowns[0]).toEqual(original);
+  });
+
+  it('converts a legacy absolute reminder into an offset reminder', () => {
+    const targetDate = new Date('2027-03-14T18:00:00').getTime();
+    const parsed = parseBackup(
+      JSON.stringify([
+        {
+          id: 'legacy',
+          title: 'Legacy',
+          targetDate,
+          remindAt: targetDate - 86_400_000,
+        },
+      ])
+    );
+    expect(parsed.countdowns[0].reminders).toEqual([
+      { id: 'legacy', kind: 'offset', minutes: 1440 },
+    ]);
   });
 
   it('accepts a bare array from an older export', () => {
@@ -72,6 +101,7 @@ describe('parseBackup', () => {
       unit: 'auto',
       pinned: false,
       archived: false,
+      reminders: [],
     });
   });
 
